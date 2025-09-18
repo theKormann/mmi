@@ -8,6 +8,7 @@ const SHOPIFY_STOREFRONT_API_URL = SHOPIFY_STORE_DOMAIN
   : null
 
 export interface ShopifyProduct {
+  tags: any
   id: string
   title: string
   description: string

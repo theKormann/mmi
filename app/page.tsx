@@ -12,7 +12,6 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       <Hero />
-      <Categories />
       <FeaturedProducts />
       <Newsletter />
       <Footer />
