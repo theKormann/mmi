@@ -53,7 +53,6 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
   const step = (endAngle - startAngle) / count;
 
   return (
-    // Cor de fundo principal aplicada aqui
     <section className={`relative overflow-hidden bg-[#E8F1F2] min-h-screen flex items-center justify-center ${className}`}>
       <div className="relative w-full h-full flex items-center justify-center">
         <div className="absolute">
@@ -79,7 +78,6 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
                   zIndex: count - i,
                 }}
               >
-                {/* Cor da borda do card aplicada aqui */}
                 <div
                   className="rounded-2xl shadow-xl overflow-hidden ring-1 ring-[#247BA0] bg-white transition-transform hover:scale-105 w-full h-full"
                   style={{ transform: `rotate(${angle + 90}deg)` }}
@@ -99,7 +97,6 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
 
       <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
         <div className="text-center max-w-2xl px-6 pointer-events-auto">
-          {/* Cor do título principal aplicada aqui */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#03293D]">
             Encontre o imóvel dos seus sonhos
           </h1>
