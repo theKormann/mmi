@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { Button } from "@/hero mmi/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/hero mmi/components/ui/badge"
 import { useCart } from "@/contexts/cart-context"
 import { ShoppingCart, Truck, Shield, RotateCcw, ArrowLeft, Loader2 } from "lucide-react"

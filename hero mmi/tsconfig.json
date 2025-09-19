@@ -33,7 +33,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
-  ],
+, "../components/ui/card.tsx", "../components/ui/button.tsx", "../components/ui/input.tsx"  ],
   "exclude": [
     "node_modules"
   ]

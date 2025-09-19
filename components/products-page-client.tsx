@@ -2,10 +2,10 @@
 
 import type React from "react"
 
-import { Button } from "@/hero mmi/components/ui/button"
-import { Card, CardContent } from "@/hero mmi/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/hero mmi/components/ui/badge"
-import { Input } from "@/hero mmi/components/ui/input"
+import { Input } from "@/components/ui/input"
 import { useProducts } from "@/hooks/use-shopify"
 import { useCart } from "@/contexts/cart-context"
 import { ShoppingCart, Search, Filter, Loader2 } from "lucide-react"

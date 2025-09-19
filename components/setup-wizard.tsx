@@ -1,8 +1,8 @@
 "use client"
 
-import { Button } from "@/hero mmi/components/ui/button"
-import { Input } from "@/hero mmi/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/hero mmi/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/hero mmi/components/ui/badge"
 import { CheckCircle, ExternalLink, Store, ShoppingCart, ArrowRight } from "lucide-react"
 import { useState } from "react"
