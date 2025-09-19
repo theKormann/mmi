@@ -1,7 +1,7 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/hero mmi/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/hero mmi/components/ui/card"
 import { X, Settings, ExternalLink } from "lucide-react"
 import { useState } from "react"
 

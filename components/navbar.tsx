@@ -1,7 +1,7 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/hero mmi/components/ui/button"
+import { Input } from "@/hero mmi/components/ui/input"
 import { Search, Menu, X } from "lucide-react"
 import { useState } from "react"
 import { getStoreName } from "@/lib/store-name"

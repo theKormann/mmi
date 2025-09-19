@@ -1,12 +1,12 @@
 "use client"
 
 import { Shirt, Watch, Headphones, Gamepad2, Camera, Coffee, Package, Star } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/hero mmi/components/ui/badge"
 import { useCollections } from "@/hooks/use-shopify"
 
 const defaultIcons = [Shirt, Watch, Headphones, Gamepad2, Camera, Coffee, Package, Star]
 
-// Placeholder categories for when Shopify is not configured
+
 const placeholderCategories = [
   { id: "1", title: "Electronics", handle: "electronics", icon: Headphones },
   { id: "2", title: "Fashion", handle: "fashion", icon: Shirt },
@@ -69,15 +69,23 @@ export function Categories() {
 
             if (isRealCollection) {
               IconComponent = defaultIcons[index % defaultIcons.length]
+              // Type guard: check if 'image' exists on category
+              const hasImage = (cat: any): cat is { image: { url?: string; altText?: string } } =>
+                cat && typeof cat === "object" && "image" in cat
+
               categoryData = {
                 id: category.id,
                 title: category.title,
                 handle: category.handle,
-                image: category.image?.url,
-                imageAlt: category.image?.altText,
+                image: hasImage(category) ? category.image?.url : null,
+                imageAlt: hasImage(category) ? category.image?.altText : null,
               }
             } else {
-              IconComponent = category.icon
+              // Type guard to check if category has 'icon'
+              const hasIcon = (cat: any): cat is { icon: typeof Shirt } =>
+                cat && typeof cat === "object" && "icon" in cat
+
+              IconComponent = hasIcon(category) ? category.icon : defaultIcons[index % defaultIcons.length]
               categoryData = {
                 id: category.id,
                 title: category.title,

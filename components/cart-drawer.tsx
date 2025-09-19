@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/hero mmi/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
 import { X, Plus, Minus, ShoppingBag, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
