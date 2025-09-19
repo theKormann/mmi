@@ -1,12 +1,11 @@
 "use client"
 
 import { Bed, Bath, Car, Ruler, MapPin } from "lucide-react"
-import { Card, CardContent, CardFooter } from "@/components/ui/card" 
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
 
-// --- TIPAGEM DOS DADOS (BOA PRÁTICA COM TYPESCRIPT) ---
 type Property = {
   id: string;
   title: string;
@@ -20,7 +19,6 @@ type Property = {
   handle: string;
 };
 
-// --- DADOS MOCKADOS ---
 const featuredProperties: Property[] = [
   {
     id: "1",
@@ -132,6 +130,17 @@ export default function FeaturedProperties() {
             <PropertyCard key={property.id} property={property} />
           ))}
         </div>
+
+        <div className="mt-16 text-center">
+          <Button
+            asChild
+            size="lg"
+            className="border-2 border-slate-900 bg-transparent px-8 py-3 font-semibold text-slate-900 transition-all hover:bg-slate-900 hover:text-white"
+          >
+            <Link href="/properties">Ver Todos os Imóveis</Link>
+          </Button>
+        </div>
+        
       </div>
     </section>
   );
