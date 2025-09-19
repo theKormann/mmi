@@ -97,7 +97,8 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
 
       <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
         <div className="text-center max-w-2xl px-6 pointer-events-auto">
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#03293D]">
+          {/* Título com tamanho de fonte ajustado para telas pequenas */}
+          <h1 className="text-2xl sm:text-4xl lg:text-6xl font-bold tracking-tight text-[#03293D]">
             Encontre o imóvel dos seus sonhos
           </h1>
           <p className="mt-4 text-lg text-[#006494]">
@@ -105,7 +106,8 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="">
-              <button className="w-full sm:w-auto px-6 py-3 rounded-full bg-[#13293D] text-[#E8F1F2] hover:bg-[#1B98E0]/90 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+              {/* Botão com padding aumentado para telas pequenas */}
+              <button className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#13293D] text-[#E8F1F2] hover:bg-[#1B98E0]/90 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                 visualizar imóveis
               </button>
             </a>
