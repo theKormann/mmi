@@ -18,8 +18,10 @@ export interface Property {
   images?: { id: number; url: string }[];
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
 const api = axios.create({
-  baseURL: "http://localhost:8080/api/properties",
+  baseURL: `${API_BASE_URL}/api/properties`,
 });
 
 // 📦 Listar todos
