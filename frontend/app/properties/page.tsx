@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { AnimatedBackground } from "@/components/animated-background"
+import AnimatedBackground from "@/components/animated-background";
 const HeroCarousel = () => <div className="bg-gray-200 aspect-video md:aspect-[2.4/1] rounded-xl flex items-center justify-center"><span className="text-2xl font-bold text-gray-500">Hero Carousel</span></div>;
 import PropertyCard from "@/components/property-card"
 import OpportunityCard from "@/components/opportunity-card"
