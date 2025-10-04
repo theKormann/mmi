@@ -12,10 +12,12 @@ export default function AnimatedBackground() {
     const context = canvas.getContext("2d")
     if (!context) return
 
-    const ctx = context
+    // fixar tipos
+    const canvasEl = canvas
+    const ctxEl = context
 
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
+    canvasEl.width = window.innerWidth
+    canvasEl.height = window.innerHeight
 
     class Particle {
       x: number
@@ -56,11 +58,11 @@ export default function AnimatedBackground() {
     const numParticles = 100
 
     for (let i = 0; i < numParticles; i++) {
-      particles.push(new Particle(canvas, ctx))
+      particles.push(new Particle(canvasEl, ctxEl))
     }
 
     function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctxEl.clearRect(0, 0, canvasEl.width, canvasEl.height)
       particles.forEach((p) => {
         p.update()
         p.draw()
@@ -71,8 +73,8 @@ export default function AnimatedBackground() {
     animate()
 
     const handleResize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      canvasEl.width = window.innerWidth
+      canvasEl.height = window.innerHeight
     }
 
     window.addEventListener("resize", handleResize)
