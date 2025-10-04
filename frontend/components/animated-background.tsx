@@ -32,8 +32,11 @@ export function AnimatedBackground() {
       opacity: number
 
       constructor() {
-        this.x = Math.random() * canvas.width
-        this.y = Math.random() * canvas.height
+        if (!canvas) return; // garante que não é null
+
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+
         this.size = Math.random() * 2 + 0.5
         this.speedX = Math.random() * 0.5 - 0.25
         this.speedY = Math.random() * 0.5 - 0.25
