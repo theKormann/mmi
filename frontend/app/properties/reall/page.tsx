@@ -97,7 +97,8 @@ function ReallContent() {
       const matchesType = propertyType === "todos" || property.type === propertyType;
       const matchesBedrooms = bedrooms === "todos" || property.bedrooms >= parseInt(bedrooms, 10);
       const matchesBathrooms = bathrooms === "todos" || property.bathrooms >= parseInt(bathrooms, 10);
-      const matchesGarages = garages === "todos" || property.garages >= parseInt(garages, 10);
+      const matchesGarages = garages === "todos" || (property.garages ?? 0) >= parseInt(garages, 10);
+
 
       const matchesPrice = () => {
         if (priceRange === 'todos') return true;
