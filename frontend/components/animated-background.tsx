@@ -7,9 +7,13 @@ export default function AnimatedBackground() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    // Usamos o optional chaining (?) para segurança extra ao pegar o contexto
     const ctx = canvas?.getContext("2d");
 
+    // A verificação crucial: só roda o código se canvas e ctx existirem
     if (canvas && ctx) {
+      // ✅ GARANTIA: Dentro deste bloco, TypeScript sabe que 'canvas' e 'ctx' não são nulos.
+      
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
@@ -52,14 +56,14 @@ export default function AnimatedBackground() {
       }
 
       let animationFrameId: number;
-      function animate() {
+      const animate = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         particles.forEach((p) => {
           p.update();
           p.draw();
         });
         animationFrameId = requestAnimationFrame(animate);
-      }
+      };
       animate();
 
       const handleResize = () => {
@@ -69,13 +73,12 @@ export default function AnimatedBackground() {
 
       window.addEventListener("resize", handleResize);
 
-      // Função de limpeza para evitar memory leaks
       return () => {
         window.removeEventListener("resize", handleResize);
         cancelAnimationFrame(animationFrameId);
       };
     }
-  }, []); // O array de dependências vazio garante que o efeito rode apenas uma vez
+  }, []);
 
   return (
     <canvas
