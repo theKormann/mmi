@@ -59,28 +59,6 @@ function ReallContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function ReallContent() {
-  const searchParams = useSearchParams();
-
-  const [searchTerm, setSearchTerm] = useState("");
-
-  return (
-    <>
-      <main className="bg-gray-50 container mx-auto px-4 py-12">
-        <section>
-          <div className="bg-white p-6 rounded-lg mb-8 border">
-          </div>
-
-          <PopularSearches onSearchClick={setSearchTerm} />
-          {renderPropertiesGrid()}
-        </section>
-      </main>
-      <Footer />
-    </>
-  );
-}
-
-
   useEffect(() => {
     async function fetchAllProperties() {
       try {
@@ -97,6 +75,7 @@ function ReallContent() {
     fetchAllProperties();
   }, []);
 
+  // Lê o 'type' da URL quando a página carrega
   useEffect(() => {
     const typeFromUrl = searchParams.get("type");
     if (typeFromUrl) {
@@ -105,6 +84,15 @@ function ReallContent() {
       if (validTypes.includes(singularType)) {
         setPropertyType(singularType);
       }
+    }
+  }, [searchParams]);
+
+  // <<< ALTERAÇÃO ADICIONADA AQUI >>>
+  // Lê o 'search' da URL quando a página carrega
+  useEffect(() => {
+    const searchFromUrl = searchParams.get("search");
+    if (searchFromUrl) {
+      setSearchTerm(searchFromUrl);
     }
   }, [searchParams]);
 
@@ -118,7 +106,6 @@ function ReallContent() {
       const matchesBedrooms = bedrooms === "todos" || property.bedrooms >= parseInt(bedrooms, 10);
       const matchesBathrooms = bathrooms === "todos" || property.bathrooms >= parseInt(bathrooms, 10);
       const matchesGarages = garages === "todos" || (property.garages ?? 0) >= parseInt(garages, 10);
-
 
       const matchesPrice = () => {
         if (priceRange === 'todos') return true;
@@ -195,7 +182,6 @@ function ReallContent() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="relative sm:col-span-2 lg:col-span-3">
-                {/* Ícones dos inputs: Cinza Escuro (#4D4D4D) com opacidade */}
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#4D4D4D]/70" />
                 <Input
                   type="text"
@@ -278,6 +264,8 @@ function ReallContent() {
               </Select>
             </div>
           </div>
+
+          <PopularSearches onSearchClick={setSearchTerm} />
 
           {renderPropertiesGrid()}
         </section>

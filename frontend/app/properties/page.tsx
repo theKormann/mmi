@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import AnimatedBackground from "@/components/animated-background";
-import { HeroCarousel}  from "@/components/hero-carousel"
+import { HeroCarousel } from "@/components/hero-carousel"
 import PropertyCard from "@/components/property-card"
 import OpportunityCard from "@/components/opportunity-card"
 import PropertyTypeCard from "@/components/property-type-card"
@@ -88,7 +88,7 @@ export default function HomePage() {
     }
     fetchProperties()
   }, [])
-  
+
   const specialOpportunities = [
     {
       title: "Feirão de Lançamentos",
@@ -179,7 +179,10 @@ export default function HomePage() {
                 <ul className="space-y-2">
                   {["Apartamento", "Casa", "Cobertura", "Terreno", "Comercial"].map((type, index) => (
                     <li key={index}>
-                      <Link href="#" className="flex items-center justify-between text-[#4D4D4D] hover:text-[#1F4F91] transition-colors duration-300 group">
+                      <Link
+                        href={`/properties/reall?type=${type}`}
+                        className="flex items-center justify-between text-[#4D4D4D] hover:text-[#1F4F91] transition-colors duration-300 group"
+                      >
                         <span>{type}</span>
                         <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
                       </Link>
@@ -196,9 +199,12 @@ export default function HomePage() {
                 <div className="flex flex-wrap gap-2">
                   {["Piscina", "Churrasqueira", "Condomínio Fechado", "Perto do Metrô", "Varanda Gourmet"].map(
                     (tag, index) => (
-                      <Badge key={index} className="bg-gray-200 text-[#4D4D4D] hover:bg-[#0C2D5A] hover:text-white transition-colors duration-300 cursor-pointer">
-                        {tag}
-                      </Badge>
+                      // CORREÇÃO AQUI: O Badge agora está dentro de um Link
+                      <Link href={`/properties/reall?search=${encodeURIComponent(tag)}`} key={index}>
+                        <Badge className="bg-gray-200 text-[#4D4D4D] hover:bg-[#0C2D5A] hover:text-white transition-colors duration-300 cursor-pointer">
+                          {tag}
+                        </Badge>
+                      </Link>
                     )
                   )}
                 </div>
@@ -225,7 +231,7 @@ export default function HomePage() {
                   </Button>
                 </a>
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {loading && (
                   <>
@@ -245,7 +251,7 @@ export default function HomePage() {
                 ))}
               </div>
             </section>
-            
+
             <section className="mb-10">
               <h2 className="text-2xl font-bold flex items-center mb-6">
                 <Percent className="mr-2 h-5 w-5 text-[#0C2D5A]" />
