@@ -2,5 +2,6 @@ package com.mmi.models;
 
 public enum TransactionType {
     VENDA,
-    LOCACAO
+    LOCACAO,
+    VENDA_E_LOCACAO
 }

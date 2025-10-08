@@ -23,7 +23,6 @@ export default function AdminLoginPage() {
       });
 
       if (res.ok) {
-        // ✅ Login bem-sucedido
         localStorage.setItem("admin-auth", "true");
         router.push("/admin/");
       } else {

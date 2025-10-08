@@ -23,7 +23,7 @@ public class Property {
     private String title;
     private Double price;
 
-    @Column(length = 500) // Aumentando o tamanho por segurança
+    @Column(length = 500)
     private String image;
 
     private String location;
@@ -32,10 +32,10 @@ public class Property {
     private int garages;
     private double area;
 
-    @Column(length = 1000) // ❗ CORREÇÃO: Aumentando o tamanho para URLs de mapa
+    @Column(length = 1000)
     private String mapUrl;
 
-    @Column(length = 2000) // ❗ CORREÇÃO: Aumentando o tamanho para a descrição
+    @Column(length = 2000)
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -51,5 +51,5 @@ public class Property {
 
     // Enums
     public enum PropertyType { Apartamento, Casa, Cobertura, Terreno, Comercial, Rural }
-    public enum TransactionType { VENDA, LOCACAO }
+    public enum TransactionType { VENDA, LOCACAO, VENDA_E_LOCACAO }
 }

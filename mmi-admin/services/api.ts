@@ -22,7 +22,7 @@ export interface Property {
   mapUrl?: string;
   description?: string;
   type: "Apartamento" | "Casa" | "Cobertura" | "Terreno" | "Comercial" | "Rural";
-  transactionType: "VENDA" | "LOCACAO";
+  transactionType: "VENDA" | "LOCACAO" | "VENDA_E_LOCACAO";
   
   images?: PropertyImage[];
 }

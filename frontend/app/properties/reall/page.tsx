@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Sparkles, Search, BedDouble, Building, Bath, Car, DollarSign, AlertCircle, X } from "lucide-react";
+import { Sparkles, Search, BedDouble, Building, Bath, Car, DollarSign, AlertCircle, X, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import Footer from "@/components/footer";
 import { PopularSearches } from "@/components/popular-searches";
 
 type Property = {
+  transactionType: string;
   id: number;
   title: string;
   price: number;
@@ -48,6 +49,8 @@ function PropertyCardSkeleton() {
 function ReallContent() {
   const searchParams = useSearchParams();
 
+  // 1. ADICIONADO NOVO ESTADO PARA A TRANSAÇÃO
+  const [transaction, setTransaction] = useState("todos");
   const [searchTerm, setSearchTerm] = useState("");
   const [propertyType, setPropertyType] = useState("todos");
   const [bedrooms, setBedrooms] = useState("todos");
@@ -75,9 +78,12 @@ function ReallContent() {
     fetchAllProperties();
   }, []);
 
-  // Lê o 'type' da URL quando a página carrega
+  // 2. useEffect ATUALIZADO para ler todos os parâmetros da URL
   useEffect(() => {
     const typeFromUrl = searchParams.get("type");
+    const searchFromUrl = searchParams.get("search");
+    const transactionFromUrl = searchParams.get("transaction");
+
     if (typeFromUrl) {
       const singularType = typeFromUrl.endsWith("s") ? typeFromUrl.slice(0, -1) : typeFromUrl;
       const validTypes = ["Apartamento", "Casa", "Cobertura", "Terreno", "Comercial", "Rural"];
@@ -85,19 +91,24 @@ function ReallContent() {
         setPropertyType(singularType);
       }
     }
-  }, [searchParams]);
 
-  // <<< ALTERAÇÃO ADICIONADA AQUI >>>
-  // Lê o 'search' da URL quando a página carrega
-  useEffect(() => {
-    const searchFromUrl = searchParams.get("search");
     if (searchFromUrl) {
       setSearchTerm(searchFromUrl);
     }
+
+    if (transactionFromUrl === 'VENDA' || transactionFromUrl === 'LOCACAO') {
+      setTransaction(transactionFromUrl);
+    }
   }, [searchParams]);
 
+  // 3. useMemo ATUALIZADO com a nova lógica de filtro
   const filteredProperties = useMemo(() => {
     return allProperties.filter((property) => {
+      const matchesTransaction =
+        transaction === "todos" ||
+        property.transactionType === transaction ||
+        property.transactionType === "VENDA_E_LOCACAO";
+
       const matchesSearch =
         property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         property.location.toLowerCase().includes(searchTerm.toLowerCase());
@@ -116,11 +127,12 @@ function ReallContent() {
         return property.price >= min;
       };
 
-      return matchesSearch && matchesType && matchesBedrooms && matchesBathrooms && matchesGarages && matchesPrice();
+      return matchesTransaction && matchesSearch && matchesType && matchesBedrooms && matchesBathrooms && matchesGarages && matchesPrice();
     });
-  }, [searchTerm, propertyType, bedrooms, bathrooms, garages, priceRange, allProperties]);
+  }, [transaction, searchTerm, propertyType, bedrooms, bathrooms, garages, priceRange, allProperties]);
   
   const handleClearFilters = () => {
+    setTransaction("todos");
     setSearchTerm("");
     setPropertyType("todos");
     setBedrooms("todos");
@@ -180,8 +192,21 @@ function ReallContent() {
               </Button>
             </div>
 
+            {/* 5. JSX ATUALIZADO com o novo Select */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="relative sm:col-span-2 lg:col-span-3">
+              <Select value={transaction} onValueChange={setTransaction}>
+                <SelectTrigger>
+                  <KeyRound className="mr-2 h-5 w-5 text-[#4D4D4D]/70" />
+                  <SelectValue placeholder="Finalidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Comprar ou Alugar</SelectItem>
+                  <SelectItem value="VENDA">Comprar</SelectItem>
+                  <SelectItem value="LOCACAO">Alugar</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="relative sm:col-span-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#4D4D4D]/70" />
                 <Input
                   type="text"

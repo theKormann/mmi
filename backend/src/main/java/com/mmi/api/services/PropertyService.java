@@ -34,7 +34,6 @@ public class PropertyService {
 
     @Transactional
     public Property createProperty(Property property, MultipartFile mainImage, List<MultipartFile> gallery) throws IOException {
-        // 1. Prepara e salva a entidade "pai" (Property) primeiro.
         if (mainImage != null && !mainImage.isEmpty()) {
             String mainImageUrl = cloudinaryService.uploadFile(mainImage, "mmi/properties/main");
             property.setImage(mainImageUrl);
@@ -42,7 +41,6 @@ public class PropertyService {
         property.setImages(new ArrayList<>());
         Property savedProperty = propertyRepository.saveAndFlush(property);
 
-        // 2. Processa e salva as imagens "filhas" (PropertyImage).
         if (gallery != null && !gallery.isEmpty()) {
             List<PropertyImage> imagesToSave = new ArrayList<>();
             for (MultipartFile file : gallery) {
@@ -81,18 +79,14 @@ public class PropertyService {
 
     @Transactional
     public void addImagesToProperty(Long propertyId, MultipartFile mainImage, List<MultipartFile> gallery) throws IOException {
-        // 1. Busca a entidade "pai" que já existe.
         Property property = getPropertyById(propertyId);
 
-        // 2. Atualiza a imagem principal, se uma nova foi enviada, e salva.
         if (mainImage != null && !mainImage.isEmpty()) {
             String mainImageUrl = cloudinaryService.uploadFile(mainImage, "mmi/properties/main");
             property.setImage(mainImageUrl);
             propertyRepository.save(property);
         }
 
-        // 3. ❗ CORREÇÃO AQUI ❗
-        // Salva as novas imagens da galeria explicitamente, em vez de confiar no cascade.
         if (gallery != null && !gallery.isEmpty()) {
             List<PropertyImage> newImages = new ArrayList<>();
             for (MultipartFile file : gallery) {
@@ -100,12 +94,12 @@ public class PropertyService {
                     String imageUrl = cloudinaryService.uploadFile(file, "mmi/properties/gallery");
                     PropertyImage image = PropertyImage.builder()
                             .url(imageUrl)
-                            .property(property) // Vincula à propriedade existente.
+                            .property(property)
                             .build();
                     newImages.add(image);
                 }
             }
-            imageRepository.saveAll(newImages); // Salva as novas imagens no banco.
+            imageRepository.saveAll(newImages);
         }
     }
 

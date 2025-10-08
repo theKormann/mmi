@@ -10,15 +10,14 @@ import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import Footer from "@/components/footer"
 
-// A URL base do seu backend (usada apenas para fallback ou imagens locais)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 type Property = {
   id: number;
   title: string;
   price: number;
-  image: string; // Imagem principal
-  images: { id: number; url: string }[]; // Imagens da galeria
+  image: string; 
+  images: { id: number; url: string }[]; 
   location: string;
   bedrooms: number;
   bathrooms: number;
@@ -28,11 +27,9 @@ type Property = {
   mapUrl: string | null;
   description: string | null;
   type: string;
+  transactionType: "VENDA" | "LOCACAO" | "VENDA_E_LOCACAO";
 };
 
-// ===================================================================
-// 💎 NOVO COMPONENTE: Lightbox para visualização em tela cheia
-// ===================================================================
 const Lightbox = ({ images, selectedIndex, onClose, onNavigate }: {
   images: string[];
   selectedIndex: number;
@@ -106,9 +103,6 @@ const Lightbox = ({ images, selectedIndex, onClose, onNavigate }: {
 };
 
 
-// ===================================================================
-// 🔄 COMPONENTE ATUALIZADO: Carrossel de Imagens
-// ===================================================================
 const ImageCarousel = ({ images, title }: { images: string[]; title: string }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -126,10 +120,8 @@ const ImageCarousel = ({ images, title }: { images: string[]; title: string }) =
     setIsLightboxOpen(true);
   }
 
-  // Garante que haja pelo menos uma imagem placeholder caso o array venha vazio
   const safeImages = images && images.length > 0 ? images : ["/placeholder.svg"];
   
-  // Renderização para imagem única (sem setas de navegação)
   if (safeImages.length <= 1) {
     return (
       <div className="relative aspect-video lg:h-[500px] w-full">
@@ -144,7 +136,6 @@ const ImageCarousel = ({ images, title }: { images: string[]; title: string }) =
     )
   }
 
-  // Renderização para múltiplas imagens
   return (
     <>
       <div className="relative aspect-video lg:h-[500px] w-full overflow-hidden">

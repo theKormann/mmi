@@ -12,7 +12,6 @@ import { Property, PropertyImage as PropertyImageType } from "../../services/api
 import axios from "axios";
 import { AlertCircle, UploadCloud, Trash2, Loader2 } from "lucide-react";
 
-// --- Tipos ---
 type ImageSource = {
   id?: number;
   url: string;
@@ -132,7 +131,6 @@ export default function PropertyForm({ property }: { property?: Property }) {
 
     try {
       if (property?.id) {
-        // --- LÓGICA DE ATUALIZAÇÃO ---
         if (imagesToDelete.length > 0) {
           await axios.delete(`${API_URL}/api/properties/images`, { data: imagesToDelete });
         }
@@ -191,7 +189,6 @@ export default function PropertyForm({ property }: { property?: Property }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       
-      {/* --- Card: Informações Básicas --- */}
       <Card>
         <CardHeader>
           <CardTitle>Informações Básicas</CardTitle>

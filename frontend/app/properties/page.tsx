@@ -33,6 +33,7 @@ import PropertyCard from "@/components/property-card"
 import OpportunityCard from "@/components/opportunity-card"
 import PropertyTypeCard from "@/components/property-type-card"
 import Footer from "@/components/footer"
+import { HeroSearchForm } from "@/components/hero-search-form"
 
 type Property = {
   id: number;
@@ -45,6 +46,7 @@ type Property = {
   garages: number;
   area: number;
   handle: string;
+  transactionType: "VENDA" | "LOCACAO" | "VENDA_E_LOCACAO";
 }
 
 function PropertyCardSkeleton() {
@@ -227,6 +229,17 @@ export default function HomePage() {
             <section className="mb-10">
               <HeroCarousel />
             </section>
+
+            <section className="mb-10 relative">
+          <HeroCarousel />
+
+
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-[90%] md:w-auto">
+            <HeroSearchForm />
+          </div>
+        </section>
+
+
             <section className="mb-10">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold flex items-center">
