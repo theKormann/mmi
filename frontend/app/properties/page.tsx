@@ -238,7 +238,7 @@ export default function HomePage() {
                 Encontre o imóvel dos seus sonhos
               </h1>
               <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-                Milhares de ofertas para comprar ou alugar com a segurança e confiança que você merece.
+                Alugar, Administrar e Vender com a gente é fácil, rápido e seguro.
               </p>
               <div className="flex justify-center">
                 <HeroSearchForm />
