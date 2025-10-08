@@ -5,6 +5,7 @@ import Footer from "@/components/footer"
 import { SetupTooltip } from "@/components/setup-tooltip"
 import ArcGalleryHero from "@/components/arc-gallery-hero"
 import Location from "@/components/location"
+import { HeroSearchForm } from "@/components/hero-search-form";
 
 export default function Home() {
   const isShopifyConfigured = !!process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN
@@ -35,6 +36,17 @@ export default function Home() {
         className="pt-16 pb-16 md:pt-20 md:pb-20 lg:pt-24 lg:pb-24"
       />
       <FeaturedProducts />
+      <section className="mb-10 text-center">
+        <h1 className="text-4xl font-extrabold text-[#0C2D5A] mb-2 tracking-tight">
+          Encontre o imóvel dos seus sonhos
+        </h1>
+        <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+          Alugar, Administrar e Vender com a gente é fácil, rápido e seguro.
+        </p>
+        <div className="flex justify-center">
+          <HeroSearchForm />
+        </div>
+      </section>
       <Location />
       <Newsletter />
       <Footer />
