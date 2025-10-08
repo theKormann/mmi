@@ -1,3 +1,5 @@
+// pages/index.tsx (ou onde seu HomePage estiver)
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -28,12 +30,12 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import AnimatedBackground from "@/components/animated-background";
-import { HeroCarousel } from "@/components/hero-carousel"
 import PropertyCard from "@/components/property-card"
 import OpportunityCard from "@/components/opportunity-card"
 import PropertyTypeCard from "@/components/property-type-card"
 import Footer from "@/components/footer"
 import { HeroSearchForm } from "@/components/hero-search-form"
+import { HeroCarousel } from "@/components/hero-carousel"
 
 type Property = {
   id: number;
@@ -201,7 +203,6 @@ export default function HomePage() {
                 <div className="flex flex-wrap gap-2">
                   {["Piscina", "Churrasqueira", "Condomínio Fechado", "Perto do Metrô", "Varanda Gourmet"].map(
                     (tag, index) => (
-                      // CORREÇÃO AQUI: O Badge agora está dentro de um Link
                       <Link href={`/properties/reall?search=${encodeURIComponent(tag)}`} key={index}>
                         <Badge className="bg-gray-200 text-[#4D4D4D] hover:bg-[#0C2D5A] hover:text-white transition-colors duration-300 cursor-pointer">
                           {tag}
@@ -215,6 +216,7 @@ export default function HomePage() {
           </aside>
 
           <main className="flex-1">
+            
             <section className="mb-10">
               <h2 className="text-2xl font-bold flex items-center mb-6">
                 <Tag className="mr-2 h-5 w-5 text-[#0C2D5A]" />
@@ -226,29 +228,31 @@ export default function HomePage() {
                 ))}
               </div>
             </section>
+
             <section className="mb-10">
               <HeroCarousel />
             </section>
 
-            <section className="mb-10 relative">
-          <HeroCarousel />
-
-
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-[90%] md:w-auto">
-            <HeroSearchForm />
-          </div>
-        </section>
+            <section className="mb-10 text-center">
+              <h1 className="text-4xl font-extrabold text-[#0C2D5A] mb-2 tracking-tight">
+                Encontre o imóvel dos seus sonhos
+              </h1>
+              <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+                Milhares de ofertas para comprar ou alugar com a segurança e confiança que você merece.
+              </p>
+              <div className="flex justify-center">
+                <HeroSearchForm />
+              </div>
+            </section>
 
 
             <section className="mb-10">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold flex items-center">
-                  {/* Ícone de destaque (Azul Escuro: #0C2D5A) */}
                   <Sparkles className="mr-2 h-5 w-5 text-[#0C2D5A]" />
                   Últimas Adições
                 </h2>
                 <a href="/properties/reall">
-                  {/* Botão Secundário (Azul Escuro: #0C2D5A) */}
                   <Button variant="outline" className="border-[#0C2D5A] text-[#0C2D5A] hover:bg-[#0C2D5A] hover:text-white transition-all duration-300">
                     Ver Todos
                   </Button>
@@ -266,7 +270,6 @@ export default function HomePage() {
                 )}
                 {error && <p className="col-span-full text-center text-red-600">{error}</p>}
                 {!loading && !error && featuredProperties.length === 0 && (
-                  // Texto de aviso (Cinza Escuro: #4D4D4D)
                   <p className="col-span-full text-center text-[#4D4D4D]">Nenhum imóvel em destaque encontrado no momento.</p>
                 )}
                 {!loading && !error && featuredProperties.slice(0, 4).map((property) => (
@@ -303,20 +306,16 @@ export default function HomePage() {
                         />
                       ))}
                     </div>
-                    {/* Citação (Cinza Escuro: #4D4D4D) */}
                     <p className="text-[#4D4D4D] italic mb-6 flex-grow">"{testimonial.quote}"</p>
                     <div className="flex items-center gap-4">
                       <Avatar>
                         <AvatarImage src={testimonial.avatar} alt={testimonial.author} />
-                        {/* Fallback do Avatar (Azul Escuro: #0C2D5A) */}
                         <AvatarFallback className="bg-[#0C2D5A]/10 text-[#0C2D5A] font-semibold">
                           {testimonial.author.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        {/* Nome do autor (Preto: #000000) */}
                         <p className="font-semibold text-[#000000]">{testimonial.author}</p>
-                        {/* Detalhes (Cinza Escuro: #4D4D4D) */}
                         <p className="text-sm text-[#4D4D4D]/80">{testimonial.details}</p>
                       </div>
                     </div>

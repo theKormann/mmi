@@ -25,7 +25,7 @@ export function HeroSearchForm() {
   };
 
   return (
-    <div className="w-full max-w-2xl">
+    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-gray-200/80 w-full max-w-2xl">
       <div className="flex mb-4 rounded-lg bg-gray-200/60 p-1">
         <button
           onClick={() => setActiveTab("VENDA")}
