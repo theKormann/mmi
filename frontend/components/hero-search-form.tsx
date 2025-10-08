@@ -25,8 +25,7 @@ export function HeroSearchForm() {
   };
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-gray-200/80 w-full max-w-2xl">
-      {/* Abas de Comprar / Alugar */}
+    <div className="w-full max-w-2xl">
       <div className="flex mb-4 rounded-lg bg-gray-200/60 p-1">
         <button
           onClick={() => setActiveTab("VENDA")}
@@ -46,7 +45,6 @@ export function HeroSearchForm() {
         </button>
       </div>
 
-      {/* Campo de busca e botão */}
       <div className="flex gap-2">
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />

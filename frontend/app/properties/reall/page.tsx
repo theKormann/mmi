@@ -12,7 +12,6 @@ import Footer from "@/components/footer";
 import { PopularSearches } from "@/components/popular-searches";
 
 type Property = {
-  transactionType: string;
   id: number;
   title: string;
   price: number;
@@ -26,6 +25,7 @@ type Property = {
   mapUrl: string | null;
   description: string | null;
   type: string;
+  transactionType: "VENDA" | "LOCACAO" | "VENDA_E_LOCACAO";
 };
 
 function PropertyCardSkeleton() {
