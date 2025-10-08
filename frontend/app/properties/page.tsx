@@ -165,16 +165,13 @@ export default function HomePage() {
   ]
 
   return (
-    // Cor de fundo geral da página (off-white) e cor de texto principal (Preto: #000000)
     <div className="min-h-screen bg-gray-50 text-[#000000]">
       <AnimatedBackground />
-
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row gap-6">
           <aside className="hidden md:block w-56 shrink-0">
             <div className="space-y-6 sticky top-24">
               <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/80">
-                {/* Título da barra lateral (Azul Escuro: #0C2D5A) */}
                 <h3 className="font-medium text-[#0C2D5A] mb-3 flex items-center">
                   <Tag className="mr-2 h-4 w-4" />
                   TIPOS DE IMÓVEL
@@ -182,7 +179,6 @@ export default function HomePage() {
                 <ul className="space-y-2">
                   {["Apartamento", "Casa", "Cobertura", "Terreno", "Comercial"].map((type, index) => (
                     <li key={index}>
-                      {/* Links (Cinza Escuro: #4D4D4D) com hover (Azul Médio: #1F4F91) */}
                       <Link href="#" className="flex items-center justify-between text-[#4D4D4D] hover:text-[#1F4F91] transition-colors duration-300 group">
                         <span>{type}</span>
                         <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
@@ -200,7 +196,6 @@ export default function HomePage() {
                 <div className="flex flex-wrap gap-2">
                   {["Piscina", "Churrasqueira", "Condomínio Fechado", "Perto do Metrô", "Varanda Gourmet"].map(
                     (tag, index) => (
-                      // Badges (Cinza Escuro: #4D4D4D) com hover (Azul Escuro: #0C2D5A)
                       <Badge key={index} className="bg-gray-200 text-[#4D4D4D] hover:bg-[#0C2D5A] hover:text-white transition-colors duration-300 cursor-pointer">
                         {tag}
                       </Badge>

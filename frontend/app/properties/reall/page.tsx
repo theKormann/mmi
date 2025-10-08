@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PropertyCard from "@/components/property-card";
 import Footer from "@/components/footer";
+import { PopularSearches } from "@/components/popular-searches";
 
 type Property = {
   id: number;
@@ -26,7 +27,6 @@ type Property = {
   type: string;
 };
 
-// Skeleton: Mantido com cores neutras de carregamento.
 function PropertyCardSkeleton() {
   return (
     <Card className="flex h-full w-full flex-col overflow-hidden rounded-xl">
@@ -48,7 +48,6 @@ function PropertyCardSkeleton() {
 function ReallContent() {
   const searchParams = useSearchParams();
 
-  // Estados dos filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [propertyType, setPropertyType] = useState("todos");
   const [bedrooms, setBedrooms] = useState("todos");
@@ -56,10 +55,31 @@ function ReallContent() {
   const [garages, setGarages] = useState("todos");
   const [priceRange, setPriceRange] = useState("todos");
   
-  // Estados de dados
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  function ReallContent() {
+  const searchParams = useSearchParams();
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  return (
+    <>
+      <main className="bg-gray-50 container mx-auto px-4 py-12">
+        <section>
+          <div className="bg-white p-6 rounded-lg mb-8 border">
+          </div>
+
+          <PopularSearches onSearchClick={setSearchTerm} />
+          {renderPropertiesGrid()}
+        </section>
+      </main>
+      <Footer />
+    </>
+  );
+}
+
 
   useEffect(() => {
     async function fetchAllProperties() {
