@@ -214,15 +214,25 @@ export default function HomePage() {
 
           <main className="flex-1">
             <section className="mb-10">
+              <h2 className="text-2xl font-bold flex items-center mb-6">
+                <Tag className="mr-2 h-5 w-5 text-[#0C2D5A]" />
+                Navegue por Tipo
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {propertyTypes.map((category, index) => (
+                  <PropertyTypeCard key={index} category={category} />
+                ))}
+              </div>
+            </section>
+            <section className="mb-10">
               <HeroCarousel />
             </section>
-
             <section className="mb-10">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold flex items-center">
                   {/* Ícone de destaque (Azul Escuro: #0C2D5A) */}
                   <Sparkles className="mr-2 h-5 w-5 text-[#0C2D5A]" />
-                  últimas Adições
+                  Últimas Adições
                 </h2>
                 <a href="/properties/reall">
                   {/* Botão Secundário (Azul Escuro: #0C2D5A) */}
@@ -302,53 +312,6 @@ export default function HomePage() {
               </div>
             </section>
 
-            <section className="mb-10">
-              <h2 className="text-2xl font-bold flex items-center mb-6">
-                <Tag className="mr-2 h-5 w-5 text-[#0C2D5A]" />
-                Navegue por Tipo
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {propertyTypes.map((category, index) => (
-                  <PropertyTypeCard key={index} category={category} />
-                ))}
-              </div>
-            </section>
-
-            <section className="mb-10">
-              <h2 className="text-2xl font-bold flex items-center mb-6">
-                <Video className="mr-2 h-5 w-5 text-[#0C2D5A]" />
-                Tours Virtuais Ao Vivo
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {virtualTours.map((stream, index) => (
-                  <div key={index} className="group relative">
-                    <div className="bg-white/60 backdrop-blur-sm border border-gray-200/80 rounded-lg overflow-hidden transition-all duration-300 group-hover:border-[#1F4F91] group-hover:shadow-lg group-hover:shadow-blue-500/10">
-                      <div className="aspect-video relative overflow-hidden">
-                        <Image src={stream.image} alt={stream.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                        <div className="absolute top-2 left-2 flex items-center gap-2">
-                          <Badge className="bg-red-600 text-white flex items-center gap-1">
-                            <span className="h-2 w-2 bg-white rounded-full animate-pulse"></span>
-                            AO VIVO
-                          </Badge>
-                          <Badge className="bg-black/50 backdrop-blur-sm text-white">{stream.viewers} assistindo</Badge>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold mb-1 group-hover:text-[#1F4F91] transition-colors duration-300">{stream.title}</h3>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6 border border-gray-300">
-                            <AvatarFallback className="bg-gradient-to-br from-[#0C2D5A] to-[#1F4F91] text-white text-xs">
-                              {stream.agent.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm text-[#4D4D4D]/80">{stream.agent}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
           </main>
         </div>
       </div>
