@@ -37,7 +37,7 @@ export default function Home() {
         className="pt-16 pb-16 md:pt-20 md:pb-20 lg:pt-24 lg:pb-24"
       />
       <FeaturedProducts />
-      <section className="mb-10 text-center">
+      <section className="mt-16 mb-16 text-center">
         <h1 className="text-4xl font-extrabold text-[#0C2D5A] mb-2 tracking-tight">
           Encontre o imóvel dos seus sonhos
         </h1>
@@ -48,6 +48,7 @@ export default function Home() {
           <HeroSearchForm />
         </div>
       </section>
+
       <Location />
       <Newsletter />
       <Footer />
