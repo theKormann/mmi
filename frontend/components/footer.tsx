@@ -69,7 +69,7 @@ export default function Footer() {
               </div>
               <div className="flex items-start justify-center md:justify-start gap-3">
                 <Mail className="w-5 h-5 text-[#0C2D5A] mt-0.5 flex-shrink-0" />
-                <a href="mailto:contato@mmiimobiliaria.com.br" className="hover:text-[#1F4F91] transition-colors">contato@mmiimobiliaria.com.br</a>
+                <a href="mailto:contato@mmiimobiliaria.com.br" className="hover:text-[#1F4F91] transition-colors">moraesmendes.adm@gmail.com</a>
               </div>
             </div>
           </div>
@@ -77,7 +77,7 @@ export default function Footer() {
 
         <div className="border-t border-gray-200 mt-10 pt-6 text-center">
           <p className="text-sm text-[#4D4D4D]">
-            © {currentYear} {companyName}. Todos os direitos reservados. | <Link href="/privacidade" className="hover:text-[#1F4F91] transition-colors">Política de Privacidade</Link>
+            © {currentYear} {companyName}. Todos os direitos reservados. | <Link href="/" className="hover:text-[#1F4F91] transition-colors">Política de Privacidade</Link>
           </p>
         </div>
       </div>
