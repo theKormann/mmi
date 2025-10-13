@@ -7,6 +7,13 @@ import ArcGalleryHero from "@/components/arc-gallery-hero"
 import Location from "@/components/location"
 import { HeroSearchForm } from "@/components/hero-search-form";
 
+export const metadata = {
+  icons: {
+    icon: "/favicon.ico",
+  },
+};
+
+
 export default function Home() {
   const isShopifyConfigured = !!process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN
 
