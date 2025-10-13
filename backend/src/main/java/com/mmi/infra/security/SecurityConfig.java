@@ -38,7 +38,7 @@ public class SecurityConfig {
                 "https://mmi-painel-administrativo.vercel.app",
                 "https://mmi-bice.vercel.app",
                 "https://mmimoraesmendesimoveis.com.br",
-                "www.mmimoraesmendesimoveis.com.br",
+                "https://www.mmimoraesmendesimoveis.com.br",
         ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
