@@ -14,7 +14,10 @@ const storeName = getStoreName()
 export const metadata: Metadata = {
   title: `${storeName} - Outlet dos imóveis`,
   description: `Descubra o imóvel feito para você. ${storeName} sinônimo de Qualidade, estilo e inovação em cada compra.`,
-  generator: 'v0.app'
+  generator: 'v0.app',
+  icons: {
+    icon: "/favicon.ico",
+  },
 }
 
 export default function RootLayout({
