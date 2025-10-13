@@ -22,7 +22,6 @@ type Property = {
   area: number;
 }
 
-// Componente Skeleton para o estado de carregamento
 function PropertyCardSkeleton() {
   return (
     <Card className="flex h-full w-full flex-col overflow-hidden rounded-xl">
@@ -93,7 +92,7 @@ export default function FeaturedProperties() {
   }
 
   return (
-    <section className="bg-slate-50 py-24">
+    <section className="bg-[#c7e1f8] py-24">
       <div className="container mx-auto px-4">
         <div className="mx-auto mb-16 max-w-2xl text-center">
           <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">

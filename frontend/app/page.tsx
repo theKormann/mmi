@@ -34,7 +34,7 @@ export default function Home() {
         cardSizeLg={120}
         cardSizeMd={100}
         cardSizeSm={80}
-        className="bg-[#c7e1f8] pt-16 pb-16 md:pt-20 md:pb-20 lg:pt-24 lg:pb-24"
+        className="pt-16 pb-16 md:pt-20 md:pb-20 lg:pt-24 lg:pb-24"
       />
       <FeaturedProducts />
       <section className="mb-10 text-center">
