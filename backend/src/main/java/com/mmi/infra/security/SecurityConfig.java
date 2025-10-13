@@ -37,7 +37,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
                 "https://mmi-painel-administrativo.vercel.app",
                 "https://mmi-bice.vercel.app",
-                "https://mmimoraesmendesimoveis.com.br"
+                "https://mmimoraesmendesimoveis.com.br",
+                "www.mmimoraesmendesimoveis.com.br",
         ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
