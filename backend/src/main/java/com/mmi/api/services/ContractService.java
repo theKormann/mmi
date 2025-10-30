@@ -1,54 +1,111 @@
 package com.mmi.api.services;
 
 import com.mmi.models.dto.ClauseDTO;
-import com.lowagie.text.*;
-import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.stereotype.Service;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
-import javax.swing.text.Document;
-import javax.swing.text.Element;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.List;
 
 @Service
 public class ContractService {
 
-    public byte[] generateContractPDF(List<ClauseDTO> clauses) throws Exception {
-        Document document = new Document(PageSize.A4, 50, 50, 50, 50);
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    public byte[] generateContractPDF(List<ClauseDTO> clauses) throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
 
-        PdfWriter.getInstance(document, baos);
-        document.open();
+            try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+                float margin = 50;
+                float yStart = page.getMediaBox().getHeight() - margin;
+                float yPosition = yStart;
+                float lineSpacing = 16;
 
-        Font titleFont = new Font(Font.HELVETICA, 18, Font.BOLD);
-        Paragraph header = new Paragraph("CONTRATO DE PRESTAÇÃO DE SERVIÇOS IMOBILIÁRIOS\n\n", titleFont);
-        header.setAlignment(Element.ALIGN_CENTER);
-        document.add(header);
+                // Título principal
+                content.beginText();
+                content.setFont(PDType1Font.HELVETICA_BOLD, 18);
+                content.newLineAtOffset(margin, yPosition);
+                content.showText("CONTRATO DE PRESTAÇÃO DE SERVIÇOS IMOBILIÁRIOS");
+                content.endText();
 
-        Font clauseTitleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
-        Font clauseTextFont = new Font(Font.HELVETICA, 12, Font.NORMAL);
+                yPosition -= 40; // espaço após o título
 
-        int clauseNumber = 1;
-        for (ClauseDTO clause : clauses) {
-            Paragraph clauseTitle = new Paragraph("Cláusula " + clauseNumber + " - " + clause.getTitle(), clauseTitleFont);
-            clauseTitle.setSpacingBefore(10);
-            clauseTitle.setSpacingAfter(5);
-            document.add(clauseTitle);
+                // Cláusulas
+                int clauseNumber = 1;
+                for (ClauseDTO clause : clauses) {
+                    // Título da cláusula
+                    content.beginText();
+                    content.setFont(PDType1Font.HELVETICA_BOLD, 14);
+                    content.newLineAtOffset(margin, yPosition);
+                    content.showText("Cláusula " + clauseNumber + " - " + clause.getTitle());
+                    content.endText();
 
-            Paragraph clauseText = new Paragraph(clause.getContent(), clauseTextFont);
-            clauseText.setAlignment(Element.ALIGN_JUSTIFIED);
-            document.add(clauseText);
+                    yPosition -= 20;
 
-            clauseNumber++;
+                    // Texto da cláusula (quebra manual de linhas simples)
+                    content.setFont(PDType1Font.HELVETICA, 12);
+                    String[] words = clause.getContent().split(" ");
+                    StringBuilder line = new StringBuilder();
+                    float maxWidth = page.getMediaBox().getWidth() - 2 * margin;
+
+                    for (String word : words) {
+                        String temp = line + word + " ";
+                        float textWidth = PDType1Font.HELVETICA.getStringWidth(temp) / 1000 * 12;
+                        if (textWidth > maxWidth) {
+                            content.beginText();
+                            content.newLineAtOffset(margin, yPosition);
+                            content.showText(line.toString().trim());
+                            content.endText();
+                            line = new StringBuilder(word + " ");
+                            yPosition -= lineSpacing;
+                        } else {
+                            line.append(word).append(" ");
+                        }
+                    }
+
+                    // Última linha
+                    if (!line.isEmpty()) {
+                        content.beginText();
+                        content.newLineAtOffset(margin, yPosition);
+                        content.showText(line.toString().trim());
+                        content.endText();
+                        yPosition -= lineSpacing * 2;
+                    }
+
+                    clauseNumber++;
+
+                    // Nova página se acabar o espaço
+                    if (yPosition < 100) {
+                        content.close();
+                        page = new PDPage();
+                        document.addPage(page);
+                        yPosition = yStart;
+                        content.close();
+                    }
+                }
+
+                // Rodapé (assinatura)
+                yPosition -= 40;
+                content.beginText();
+                content.setFont(PDType1Font.HELVETICA, 12);
+                content.newLineAtOffset(margin, yPosition);
+                content.showText("______________________________");
+                content.endText();
+
+                yPosition -= 15;
+                content.beginText();
+                content.newLineAtOffset(margin, yPosition);
+                content.showText("Assinatura das partes");
+                content.endText();
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            document.save(baos);
+            return baos.toByteArray();
         }
-
-        // Rodapé
-        Paragraph footer = new Paragraph("\n\n______________________________\nAssinatura das partes", clauseTextFont);
-        footer.setAlignment(Element.ALIGN_CENTER);
-        footer.setSpacingBefore(30);
-        document.add(footer);
-
-        document.close();
-        return baos.toByteArray();
     }
 }

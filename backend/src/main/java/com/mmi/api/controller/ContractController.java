@@ -1,34 +1,31 @@
 package com.mmi.api.controller;
 
-import com.mmi.models.dto.ClauseDTO;
 import com.mmi.api.services.ContractService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import com.mmi.models.dto.ClauseDTO;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/contracts")
-@RequiredArgsConstructor
-@CrossOrigin(origins = "*") // caso o frontend Next.js rode em porta diferente
+@RequestMapping("/api/contracts")
 public class ContractController {
 
     private final ContractService contractService;
 
+    public ContractController(ContractService contractService) {
+        this.contractService = contractService;
+    }
+
     @PostMapping("/pdf")
-    public ResponseEntity<byte[]> generateContractPDF(@RequestBody List<ClauseDTO> clauses) {
-        try {
-            byte[] pdfBytes = contractService.generateContractPDF(clauses);
+    public ResponseEntity<byte[]> generateContract(@RequestBody List<ClauseDTO> clauses) throws Exception {
+        byte[] pdf = contractService.generateContractPDF(clauses);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", "contrato.pdf");
-
-            return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(("Erro ao gerar PDF: " + e.getMessage()).getBytes());
-        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=contrato.pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }
