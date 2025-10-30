@@ -85,7 +85,7 @@ public class LeadService {
         dto.setOrigem(lead.getOrigem());
         dto.setStatus(lead.getStatus());
         dto.setInteresse(lead.getInteresse());
-        lead.setDescricao(dto.getDescricao());
+        dto.setDescricao(lead.getDescricao());
         if (lead.getProperty() != null) {
             dto.setPropertyId(lead.getProperty().getId());
             dto.setPropertyTitle(lead.getProperty().getTitle());

@@ -30,6 +30,9 @@ public class Lead {
     private Property property;
 
     @OneToMany(mappedBy = "lead", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TrackingEvent> trackingEvents;
+
+    @OneToMany(mappedBy = "lead", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Payment> payments;
 

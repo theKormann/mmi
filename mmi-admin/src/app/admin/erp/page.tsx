@@ -79,7 +79,7 @@ export default function ERPDashboard() {
         </Link>
 
         <Link
-          href="/admin/erp/contratos"
+          href="/admin/erp/contracts"
           className="block p-6 bg-white shadow-lg rounded-xl border border-gray-100 hover:shadow-xl hover:border-purple-300 transition-all cursor-pointer h-full"
         >
           <div className="flex items-center justify-center w-12 h-12 bg-purple-100 text-purple-600 rounded-full mb-4">
