@@ -1,5 +1,6 @@
 package com.mmi.models;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.mmi.models.Lead;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -14,6 +15,13 @@ public class TrackingEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // TrackingEvent.java
+    @ManyToOne
+    @JoinColumn(name = "lead_id")
+    @JsonBackReference
+    private Lead lead;
+
+
     @Column(nullable = false, updatable = false)
     private String visitorId;
 
@@ -26,10 +34,6 @@ public class TrackingEvent {
 
     @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "lead_id")
-    private Lead lead;
 
     private String ipAddress;
     private String country;
