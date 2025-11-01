@@ -1,18 +1,17 @@
 package com.mmi.api.controller;
 
 import com.mmi.api.services.ContractService;
-import com.mmi.models.Clause; // Importe a entidade
+import com.mmi.models.Contract;
 import com.mmi.models.dto.ClauseDTO;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/clauses")
+@RequestMapping("/api/contracts") // Rota base para CONTRATOS
 public class ContractController {
 
     private final ContractService contractService;
@@ -21,38 +20,22 @@ public class ContractController {
         this.contractService = contractService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<Clause>> getAllClauses() {
-        List<Clause> clauses = contractService.findAllClauses();
-        return ResponseEntity.ok(clauses);
-    }
-
     @PostMapping
-    public ResponseEntity<Clause> createClause(@RequestBody ClauseDTO clauseDTO) {
-        Clause newClause = contractService.createClause(clauseDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(newClause);
+    public ResponseEntity<String> createContract(@RequestBody List<ClauseDTO> clauses) throws Exception {
+        Contract newContract = contractService.createContractForSigning(clauses);
+        return ResponseEntity.ok(newContract.getUuid().toString());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Clause> updateClause(@PathVariable Long id, @RequestBody ClauseDTO clauseDTO) {
-        Clause updatedClause = contractService.updateClause(id, clauseDTO);
-        return ResponseEntity.ok(updatedClause);
+    @GetMapping("/{uuid}")
+    public ResponseEntity<Contract> getContract(@PathVariable UUID uuid) {
+        Contract contract = contractService.getContractByUuid(uuid);
+        return ResponseEntity.ok(contract);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteClause(@PathVariable Long id) {
-        contractService.deleteClause(id);
-        return ResponseEntity.noContent().build();
+    @PostMapping("/{uuid}/signatures")
+    public ResponseEntity<Void> addSignature(@PathVariable UUID uuid, @RequestBody String signatureBase64) {
+        contractService.addSignatureToContract(uuid, signatureBase64);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-
-    @PostMapping("/pdf")
-    public ResponseEntity<byte[]> generateContract(@RequestBody List<ClauseDTO> clauses) throws Exception {
-        byte[] pdf = contractService.generateContractPDF(clauses);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=contrato.pdf")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdf);
-    }
 }

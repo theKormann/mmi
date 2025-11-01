@@ -1,8 +1,11 @@
 package com.mmi.api.services;
 
 import com.mmi.infra.ClauseRepository;
+import com.mmi.infra.ContractRepository;
 import com.mmi.models.Clause;
+import com.mmi.models.Contract;
 import com.mmi.models.dto.ClauseDTO;
+import com.mmi.models.Signature;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -10,17 +13,48 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class ContractService {
 
     private final ClauseRepository clauseRepository;
+    private final ContractRepository contractRepository;
 
-    public ContractService(ClauseRepository clauseRepository) {
+    public ContractService(ClauseRepository clauseRepository, ContractRepository contractRepository) {
         this.clauseRepository = clauseRepository;
+        this.contractRepository = contractRepository;
+    }
+
+    public Contract createContractForSigning(List<ClauseDTO> clauses) throws IOException {
+        byte[] pdfBytes = generateContractPDF(clauses); // Reutiliza seu método de gerar PDF
+
+        Contract contract = new Contract();
+        contract.setPdfData(pdfBytes);
+
+        return contractRepository.save(contract);
+    }
+
+    public Contract getContractByUuid(UUID uuid) {
+        return contractRepository.findByUuid(uuid)
+                .orElseThrow(() -> new EntityNotFoundException("Contrato não encontrado"));
+    }
+
+    public Signature addSignatureToContract(UUID uuid, String signatureBase64) {
+        Contract contract = getContractByUuid(uuid);
+
+        Signature newSignature = new Signature();
+        newSignature.setSignatureImage(signatureBase64);
+        newSignature.setContract(contract);
+
+        contract.getSignatures().add(newSignature);
+        contractRepository.save(contract);
+
+        return newSignature;
     }
 
     public List<Clause> findAllClauses() {
@@ -58,7 +92,6 @@ public class ContractService {
             document.addPage(page);
 
             try (PDPageContentStream content = new PDPageContentStream(document, page)) {
-                // ... (todo o seu código de geração de PDF continua aqui, sem alterações) ...
                 float margin = 50;
                 float yStart = page.getMediaBox().getHeight() - margin;
                 float yPosition = yStart;
@@ -79,11 +112,10 @@ public class ContractService {
                     content.beginText();
                     content.setFont(PDType1Font.HELVETICA_BOLD, 14);
                     content.newLineAtOffset(margin, yPosition);
-                    content.showText("Cláusula " + clauseNumber + " - " + clause.getTitle());
+                    content.showText(clause.getTitle());
                     content.endText();
                     yPosition -= 20;
 
-                    // ... (resto do seu código de PDF) ...
                     content.setFont(PDType1Font.HELVETICA, 12);
                     String[] words = clause.getContent().split(" ");
                     StringBuilder line = new StringBuilder();
@@ -116,14 +148,9 @@ public class ContractService {
                         page = new PDPage();
                         document.addPage(page);
                         yPosition = yStart;
-                        // Correção: você precisa reabrir o content stream para a nova página
-                        // Esta parte estava com um bug no seu original, mas pode não ser o foco agora.
-                        // Apenas para constar, o correto seria:
-                        // content = new PDPageContentStream(document, page); 
                     }
                 }
 
-                // Rodapé (assinatura)
                 yPosition -= 40;
                 content.beginText();
                 content.setFont(PDType1Font.HELVETICA, 12);

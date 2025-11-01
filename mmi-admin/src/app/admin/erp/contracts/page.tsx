@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation' // 1. Importe o useRouter
 import {
   getClauses,
   deleteClause,
   createClause,
   updateClause,
   Clause,
-  generateContractPDF
-} from '../../../../../services/api'
+  // generateContractPDF, // Não vamos mais usar esta
+} from '../../../../../services/api' // Ajuste o caminho para seu 'api.ts'
 import {
   PlusCircle,
   Trash2,
@@ -17,12 +18,15 @@ import {
   Edit,
   ArrowLeft,
   FileDown,
-  Loader2
+  Loader2,
 } from 'lucide-react'
-import ClauseModal from '../../../../components/ClauseModal'
+import ClauseModal from '../../../../components/ClauseModal' // Ajuste o caminho
 import { AxiosResponse } from 'axios'
+import axios from 'axios' // 2. Importe o axios
 
 type ClauseFormData = Omit<Clause, 'id' | 'createdAt'>
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 export default function ContractsPage() {
   const [clauses, setClauses] = useState<Clause[]>([])
@@ -34,7 +38,8 @@ export default function ContractsPage() {
   const [clauseToEdit, setClauseToEdit] = useState<Clause | null>(null)
 
   const [selectedClauses, setSelectedClauses] = useState<number[]>([])
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false) // 3. Renomeei o estado
+  const router = useRouter() // 4. Inicialize o router
 
   useEffect(() => {
     loadClauses()
@@ -54,6 +59,7 @@ export default function ContractsPage() {
     }
   }
 
+  
   const handleOpenCreateModal = () => {
     setClauseToEdit(null)
     setIsModalOpen(true)
@@ -66,12 +72,10 @@ export default function ContractsPage() {
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Tem certeza que deseja excluir esta cláusula?')) return
-
     try {
       await deleteClause(id)
       setClauses((prev) => prev.filter((c) => c.id !== id))
     } catch (err) {
-      console.error('Erro ao excluir cláusula:', err)
       alert('Falha ao excluir a cláusula.')
     }
   }
@@ -88,12 +92,10 @@ export default function ContractsPage() {
         res = await createClause(formData)
         setClauses((prev) => [res.data, ...prev])
       }
-
       setIsModalOpen(false)
       setClauseToEdit(null)
     } catch (err) {
-      console.error('Erro ao salvar cláusula:', err)
-      alert('Falha ao salvar cláusula. Verifique os dados e tente novamente.')
+      alert('Falha ao salvar cláusula.')
     }
   }
 
@@ -103,7 +105,10 @@ export default function ContractsPage() {
     )
   }
 
-  const handleGeneratePDF = async () => {
+  // 5. ==========================================================
+  //    FUNÇÃO ATUALIZADA PARA CRIAR CONTRATO E REDIRECIONAR
+  // ==========================================================
+  const handleGenerateContract = async () => {
     const selected = clauses.filter(
       (c) => c.id != null && selectedClauses.includes(c.id)
     )
@@ -113,16 +118,19 @@ export default function ContractsPage() {
     }
 
     try {
-      setIsGeneratingPDF(true)
-      const res = await generateContractPDF(selected)
-      const blob = new Blob([res.data], { type: 'application/pdf' })
-      const url = window.URL.createObjectURL(blob)
-      window.open(url)
+      setIsGenerating(true)
+      
+      const res = await axios.post(`${API_URL}/api/erp/contracts`, selected)
+      
+      const contractUuid = res.data 
+
+      router.push(`/admin/erp/contracts/signatures/${contractUuid}`)
+
     } catch (err) {
-      console.error('Erro ao gerar PDF:', err)
-      alert('Falha ao gerar o contrato em PDF.')
+      console.error('Erro ao criar contrato para assinatura:', err)
+      alert('Falha ao iniciar o processo de assinatura.')
     } finally {
-      setIsGeneratingPDF(false)
+      setIsGenerating(false)
     }
   }
 
@@ -130,7 +138,6 @@ export default function ContractsPage() {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <p className="ml-3 text-gray-700">Carregando cláusulas...</p>
       </div>
     )
 
@@ -146,7 +153,7 @@ export default function ContractsPage() {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <Link
-              href="/admin"
+              href="/admin/erp"
               className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
             >
               <ArrowLeft className="w-6 h-6" />
@@ -160,19 +167,20 @@ export default function ContractsPage() {
           <div className="flex gap-3">
             <button
               className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow text-white transition-colors ${
-                isGeneratingPDF
+                isGenerating
                   ? 'bg-green-400 cursor-not-allowed'
                   : 'bg-green-600 hover:bg-green-700'
               }`}
-              onClick={handleGeneratePDF}
-              disabled={isGeneratingPDF}
+              onClick={handleGenerateContract} 
+              disabled={isGenerating}
             >
-              {isGeneratingPDF ? (
+              {isGenerating ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <FileDown className="w-5 h-5" />
               )}
-              {isGeneratingPDF ? 'Gerando...' : 'Gerar PDF'}
+              {/* 7. Texto do botão atualizado */}
+              {isGenerating ? 'Iniciando...' : 'Gerar e Assinar'}
             </button>
 
             <button
@@ -185,7 +193,7 @@ export default function ContractsPage() {
           </div>
         </div>
 
-        {/* LISTAGEM */}
+        {/* LISTAGEM (O restante do seu JSX permanece o mesmo) */}
         {clauses.length === 0 ? (
           <p className="text-center text-gray-500">
             Nenhuma cláusula cadastrada.
@@ -204,11 +212,11 @@ export default function ContractsPage() {
                     isSelected ? 'ring-2 ring-blue-400' : 'hover:shadow-xl'
                   }`}
                 >
-                  <div>
+                  {/* ... (renderização do card da cláusula) ... */}
+                   <div>
                     <h2 className="text-lg font-semibold text-gray-900 mb-2">
                       {clause.title}
                     </h2>
-
                     <p className="text-sm text-gray-700">
                       {isExpanded
                         ? clause.content
@@ -216,7 +224,6 @@ export default function ContractsPage() {
                         ? `${clause.content.substring(0, 120)}...`
                         : clause.content}
                     </p>
-
                     {clause.content.length > 120 && (
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : id)}
@@ -226,7 +233,6 @@ export default function ContractsPage() {
                       </button>
                     )}
                   </div>
-
                   <div className="flex items-center justify-between mt-4 pt-3 border-t">
                     <button
                       onClick={() => id !== -1 && toggleSelectClause(id)}
@@ -238,7 +244,6 @@ export default function ContractsPage() {
                     >
                       {isSelected ? 'Selecionada' : 'Selecionar'}
                     </button>
-
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleOpenEditModal(clause)}
@@ -261,7 +266,6 @@ export default function ContractsPage() {
         )}
       </div>
 
-      {/* MODAL */}
       <ClauseModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

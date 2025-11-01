@@ -20,7 +20,7 @@ public class Clause {
 
     public Clause() {
     }
-    
+
     public Clause(String title, String content) {
         this.title = title;
         this.content = content;
