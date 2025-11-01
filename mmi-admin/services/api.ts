@@ -138,6 +138,6 @@ export const deleteClause = (id: number) =>
   clausesApi.delete(`/clauses/${id}`);
 
 export const generateContractPDF = (clauses: Clause[]) =>
-  clausesApi.post("/contracts/pdf", clauses, {
-    responseType: "blob", // importante para receber o PDF binário
+  clausesApi.post("/clauses/pdf", clauses, {
+    responseType: "blob", 
   });
