@@ -120,7 +120,7 @@ export default function ContractsPage() {
     try {
       setIsGenerating(true)
       
-      const res = await axios.post(`${API_URL}/api/erp/contracts`, selected)
+      const res = await axios.post(`${API_URL}/api/contracts`, selected)
       
       const contractUuid = res.data 
 
@@ -148,8 +148,7 @@ export default function ContractsPage() {
 
   return (
     <>
-      <div className="container mx-auto px-4 py-10">
-        {/* HEADER */}
+      <div className="container mx-auto px-4 py-10">=
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <Link
@@ -193,7 +192,6 @@ export default function ContractsPage() {
           </div>
         </div>
 
-        {/* LISTAGEM (O restante do seu JSX permanece o mesmo) */}
         {clauses.length === 0 ? (
           <p className="text-center text-gray-500">
             Nenhuma cláusula cadastrada.
