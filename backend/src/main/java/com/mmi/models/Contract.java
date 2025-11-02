@@ -17,10 +17,10 @@ public class Contract {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private UUID uuid = UUID.randomUUID(); // O link "privado"
+    private UUID uuid = UUID.randomUUID();
 
-    @Lob // Large Object, para armazenar o PDF
-    @Column(name = "pdf_data", columnDefinition="LONGBLOB")
+    @Lob 
+    @Column(name = "pdf_data", columnDefinition = "BYTEA")
     private byte[] pdfData;
 
     // Um contrato pode ter várias assinaturas
