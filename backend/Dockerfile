@@ -1,4 +1,4 @@
-FROM openjdk:21-jdk-slim
+FROM openjdk:21-jdk-slim-bookworm
 WORKDIR /app
 COPY . .
 RUN chmod +x mvnw
