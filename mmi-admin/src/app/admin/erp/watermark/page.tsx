@@ -11,10 +11,7 @@ import {
     AlertTriangle,
 } from 'lucide-react'
 
-// 1. Corrigido: Esta deve ser a URL BASE do seu servidor.
-// (Sem /api no final, pois o backend já define /api/v1/...)
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
 
 export default function WatermarkGeneratorPage() {
     const [originalFile, setOriginalFile] = useState<File | null>(null)
@@ -51,12 +48,10 @@ export default function WatermarkGeneratorPage() {
         const formData = new FormData()
         formData.append('file', originalFile)
 
-        // 2. CORREÇÃO APLICADA AQUI:
-        // Concatenamos a URL base com o caminho completo do endpoint do Spring
-        const fullEndpoint = `${API_BASE_URL}/api/v1/media/watermark`
+        const fullEndpoint = `${API_URL}/api/v1/media/watermark`
 
         try {
-            const response = await fetch(fullEndpoint, { // <-- Usando a URL completa
+            const response = await fetch(fullEndpoint, {
                 method: 'POST',
                 body: formData,
             })

@@ -34,7 +34,6 @@ export default function FinancialPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
 
 
-  // --- Carrega leads e pagamentos ---
   const loadData = async () => {
     const [leadsRes, paymentsRes] = await Promise.all([
       axios.get(`${API_URL}/api/leads`),
