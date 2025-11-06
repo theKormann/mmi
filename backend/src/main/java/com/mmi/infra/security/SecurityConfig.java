@@ -24,7 +24,6 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .authorizeHttpRequests(auth -> auth
-                        // TODO: Adicionar regras de segurança específicas no futuro
                         .anyRequest().permitAll()
                 );
 
@@ -38,8 +37,11 @@ public class SecurityConfig {
                 "https://mmi-painel-administrativo.vercel.app",
                 "https://mmi-bice.vercel.app",
                 "https://mmimoraesmendesimoveis.com.br",
-                "https://www.mmimoraesmendesimoveis.com.br"
+                "https://www.mmimoraesmendesimoveis.com.br",
+                "https://mmi-iie23d8wr-thekormanns-projects.vercel.app"
         ));
+
+        configuration.addAllowedOriginPattern("https://mmi-*.vercel.app");
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 

@@ -20,7 +20,7 @@ public class WatermarkService {
         BufferedImage mainImage = ImageIO.read(fileStream);
 
 
-        InputStream watermarkStream = new ClassPathResource("uploads/mmi-watermark.png").getInputStream();
+        InputStream watermarkStream = new ClassPathResource("mmi-watermark.png").getInputStream();
         BufferedImage watermarkImage = ImageIO.read(watermarkStream);
 
         Graphics2D g = (Graphics2D) mainImage.getGraphics();
