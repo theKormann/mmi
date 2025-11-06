@@ -1,4 +1,4 @@
-FROM openjdk:21-jdk-slim-bookworm
+FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
 COPY . .
 RUN chmod +x mvnw
