@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Lead, getProperties, Property } from '../../services/api' // Ajuste o caminho se necessário
+import { Lead, getProperties, Property } from '../../services/api' 
 import { X, Loader2, Save } from 'lucide-react'
 
-// Definição correta do tipo para o formulário
-// propertyId pode ser number ou null
-type LeadFormData = Omit<Lead, 'id' | 'criadoEm' | 'property'> & {
+type LeadFormData = Omit<Lead, 'id' | 'criadoEm' | 'property' | 'propertyId'> & {
   propertyId: number | null
 }
 
@@ -17,17 +15,17 @@ interface LeadModalProps {
   leadToEdit: Lead | null
 }
 
-const STATUS_OPTIONS: Lead['status'][] = [
+const STATUS_OPTIONS = [
   'Novo',
   'Em contato',
   'Visitou',
   'Proposta',
   'Negociação',
   'Fechado',
-  'Perdido'
-]
+  'Perdido',
+] as Lead['status'][]
 
-const INTERESSE_OPTIONS: Lead['interesse'][] = ['Comprar', 'Alugar', 'Investir']
+const INTERESSE_OPTIONS = ['Comprar', 'Alugar', 'Investir'] as unknown as Lead['interesse'][]
 
 export default function LeadModal({
   isOpen,
