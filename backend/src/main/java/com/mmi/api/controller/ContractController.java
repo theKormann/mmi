@@ -44,7 +44,9 @@ public class ContractController {
             @PathVariable UUID uuid,
             @RequestBody SignatureDTO signatureDTO) {
 
-        Signature newSignature = contractService.addSignatureToContract(uuid, signatureDTO);
+        Signature newSignature = contractService.addSignerToContract(uuid, signatureDTO);
+
         return new ResponseEntity<>(newSignature, HttpStatus.CREATED);
     }
+
 }

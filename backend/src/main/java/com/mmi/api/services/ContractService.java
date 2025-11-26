@@ -2,6 +2,7 @@ package com.mmi.api.services;
 
 import com.mmi.infra.ClauseRepository;
 import com.mmi.infra.ContractRepository;
+import com.mmi.models.Clause;
 import com.mmi.models.Contract;
 import com.mmi.models.Signature;
 import com.mmi.models.dto.ClauseDTO;
@@ -36,6 +37,34 @@ public class ContractService {
         this.clauseRepository = clauseRepository;
         this.contractRepository = contractRepository;
         this.clicksignService = clicksignService;
+    }
+
+    public List<Clause> findAllClauses() {
+        return clauseRepository.findAll();
+    }
+
+    public Clause createClause(ClauseDTO clauseDTO) {
+        Clause clause = new Clause();
+        clause.setTitle(clauseDTO.getTitle());
+        clause.setContent(clauseDTO.getContent());
+        return clauseRepository.save(clause);
+    }
+
+    public Clause updateClause(Long id, ClauseDTO clauseDTO) {
+        Clause clause = clauseRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Cláusula não encontrada com id: " + id));
+
+        clause.setTitle(clauseDTO.getTitle());
+        clause.setContent(clauseDTO.getContent());
+
+        return clauseRepository.save(clause);
+    }
+
+    public void deleteClause(Long id) {
+        if (!clauseRepository.existsById(id)) {
+            throw new EntityNotFoundException("Cláusula não encontrada com id: " + id);
+        }
+        clauseRepository.deleteById(id);
     }
 
     /**
