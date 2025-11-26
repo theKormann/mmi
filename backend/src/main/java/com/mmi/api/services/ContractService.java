@@ -149,9 +149,6 @@ public class ContractService {
         return newSignature;
     }
 
-    // =============================================================================================
-    // GERAÇÃO DO PDF (Mantida lógica visual, sem assinaturas desenhadas manualmente)
-    // =============================================================================================
     public byte[] generateContractPDF(List<ClauseDTO> clauses) throws IOException {
         try (PDDocument document = new PDDocument()) {
 
@@ -212,17 +209,20 @@ public class ContractService {
 
                     // Verifica quebra de página
                     if (yPosition < footerHeight + 40) {
-                        content.close();
+                        content.close(); // Fecha o stream da página atual
+
                         page = new PDPage(PDRectangle.A4);
                         document.addPage(page);
                         drawBackground(document, page, bgStandard);
+
+                        // Abre novo stream para a nova página
                         content = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true);
                         content.setFont(PDType1Font.TIMES_ROMAN, 12);
                         yPosition = yStart;
                     }
                 }
 
-                // Imprime o restante da linha
+                // Imprime o restante da linha final da cláusula
                 if (!line.isEmpty()) {
                     content.beginText();
                     content.newLineAtOffset(margin, yPosition);
@@ -231,9 +231,36 @@ public class ContractService {
                     yPosition -= lineSpacing * 2;
                 }
             }
-            content.close();
+            content.close(); // Fecha o stream da última página de conteúdo
 
-            // A Clicksign adiciona automaticamente a página de assinaturas/log ao final.
+            // --- NOVA LÓGICA: NUMERAÇÃO DE PÁGINAS ---
+            int totalPages = document.getNumberOfPages();
+            for (int i = 0; i < totalPages; i++) {
+                PDPage currentPage = document.getPage(i);
+
+                // Abre um novo stream em modo APPEND para desenhar SOBRE o que já existe
+                try (PDPageContentStream pageNumberStream = new PDPageContentStream(document, currentPage, PDPageContentStream.AppendMode.APPEND, true, true)) {
+
+                    String pageText = String.format("Página %d de %d", i + 1, totalPages);
+                    float fontSize = 10;
+                    PDType1Font font = PDType1Font.TIMES_ROMAN;
+
+                    // Calcula a largura do texto para alinhar à direita
+                    float textWidth = font.getStringWidth(pageText) / 1000 * fontSize;
+
+                    // Posição X: Largura da página - Margem Direita - Largura do Texto
+                    float xOffset = currentPage.getMediaBox().getWidth() - margin - textWidth;
+                    // Posição Y: 30 pixels do fundo (Rodapé)
+                    float yOffset = 30;
+
+                    pageNumberStream.beginText();
+                    pageNumberStream.setFont(font, fontSize);
+                    pageNumberStream.newLineAtOffset(xOffset, yOffset);
+                    pageNumberStream.showText(pageText);
+                    pageNumberStream.endText();
+                }
+            }
+            // -----------------------------------------
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             document.save(baos);
