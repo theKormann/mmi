@@ -1,10 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Lead, getProperties, Property } from '../../services/api'
-import { X } from 'lucide-react'
+import { Lead, getProperties, Property } from '../../services/api' // Ajuste o caminho se necessário
+import { X, Loader2, Save } from 'lucide-react'
 
-type LeadFormData = Omit<Lead, 'id' | 'criadoEm' | 'property'>
+// Definição correta do tipo para o formulário
+// propertyId pode ser number ou null
+type LeadFormData = Omit<Lead, 'id' | 'criadoEm' | 'property'> & {
+  propertyId: number | null
+}
 
 interface LeadModalProps {
   isOpen: boolean
@@ -17,11 +21,13 @@ const STATUS_OPTIONS: Lead['status'][] = [
   'Novo',
   'Em contato',
   'Visitou',
+  'Proposta',
   'Negociação',
   'Fechado',
+  'Perdido'
 ]
 
-const INTERESSE_OPTIONS: Lead['interesse'][] = ['Comprar', 'Alugar', 'Vender']
+const INTERESSE_OPTIONS: Lead['interesse'][] = ['Comprar', 'Alugar', 'Investir']
 
 export default function LeadModal({
   isOpen,
@@ -29,37 +35,65 @@ export default function LeadModal({
   onSave,
   leadToEdit,
 }: LeadModalProps) {
+  
+  // Estado inicial do formulário
   const getInitialData = (): LeadFormData => ({
     nome: leadToEdit?.nome ?? '',
     email: leadToEdit?.email ?? '',
     telefone: leadToEdit?.telefone ?? '',
     status: leadToEdit?.status ?? 'Novo',
     interesse: leadToEdit?.interesse ?? 'Comprar',
-    origem: leadToEdit?.origem ?? 'Site',
+    origem: leadToEdit?.origem ?? 'Manual',
     descricao: leadToEdit?.descricao ?? '',
-    propertyId: leadToEdit?.property?.id,
+    // Se tiver propriedade, pega o ID, senão null
+    propertyId: leadToEdit?.property?.id ?? null, 
   })
 
   const [formData, setFormData] = useState<LeadFormData>(getInitialData())
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [properties, setProperties] = useState<Property[]>([])
-  const [expanded, setExpanded] = useState(false)
+  
+  // Estados de controle de UI
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingProps, setIsLoadingProps] = useState(false)
 
+  // Carregar dados ao abrir o modal
   useEffect(() => {
     if (isOpen) {
       setFormData(getInitialData())
-      getProperties().then((res) => setProperties(res.data))
+      loadProperties()
     }
   }, [isOpen, leadToEdit])
+
+  async function loadProperties() {
+    try {
+      setIsLoadingProps(true)
+      const res = await getProperties()
+      setProperties(res.data)
+    } catch (error) {
+      console.error('Erro ao carregar imóveis', error)
+    } finally {
+      setIsLoadingProps(false)
+    }
+  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'propertyId' ? Number(value) : value,
-    }))
+
+    setFormData((prev) => {
+      // Lógica específica para o propertyId
+      if (name === 'propertyId') {
+        return {
+          ...prev,
+          // Se for string vazia, vira null. Se tiver valor, vira Number.
+          propertyId: value === '' ? null : Number(value)
+        }
+      }
+
+      // Campos normais
+      return { ...prev, [name]: value }
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,7 +104,7 @@ export default function LeadModal({
       onClose()
     } catch (error) {
       console.error('Erro ao salvar lead:', error)
-      alert('Falha ao salvar lead. Tente novamente.')
+      alert('Falha ao salvar lead. Verifique os dados e tente novamente.')
     } finally {
       setIsSubmitting(false)
     }
@@ -79,67 +113,72 @@ export default function LeadModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-gray-500 hover:text-gray-800"
-        >
-          <X className="h-5 w-5" />
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-all">
+      <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+        
+        {/* Header Fixo */}
+        <div className="flex items-center justify-between border-b p-5 sticky top-0 bg-white z-10">
+          <h2 className="text-xl font-bold text-gray-800">
+            {leadToEdit ? 'Editar Lead' : 'Novo Lead'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
 
-        <h2 className="mb-4 text-2xl font-semibold">
-          {leadToEdit ? 'Editar Lead' : 'Novo Lead'}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Corpo do Formulário */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          
           {/* Nome */}
           <div>
-            <label htmlFor="nome" className="mb-1 block text-sm font-medium">
-              Nome
+            <label htmlFor="nome" className="mb-1 block text-sm font-semibold text-gray-700">
+              Nome Completo
             </label>
             <input
               type="text"
               id="nome"
               name="nome"
+              placeholder="Ex: João da Silva"
               value={formData.nome}
               onChange={handleChange}
               required
-              className="w-full rounded-md border p-2"
+              className="w-full rounded-lg border border-gray-300 p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
             />
           </div>
 
           {/* Email e Telefone */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="email" className="mb-1 block text-sm font-medium">
+              <label htmlFor="email" className="mb-1 block text-sm font-semibold text-gray-700">
                 Email
               </label>
               <input
                 type="email"
                 id="email"
                 name="email"
+                placeholder="cliente@email.com"
                 value={formData.email}
                 onChange={handleChange}
-                required
-                className="w-full rounded-md border p-2"
+                // Email nem sempre é obrigatório em CRM, ajuste conforme regra de negócio (aqui mantive required do seu código)
+                className="w-full rounded-lg border border-gray-300 p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
               />
             </div>
             <div>
-              <label
-                htmlFor="telefone"
-                className="mb-1 block text-sm font-medium"
-              >
-                Telefone
+              <label htmlFor="telefone" className="mb-1 block text-sm font-semibold text-gray-700">
+                Telefone / WhatsApp
               </label>
               <input
                 type="tel"
                 id="telefone"
                 name="telefone"
+                placeholder="(00) 00000-0000"
                 value={formData.telefone}
                 onChange={handleChange}
                 required
-                className="w-full rounded-md border p-2"
+                className="w-full rounded-lg border border-gray-300 p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
               />
             </div>
           </div>
@@ -147,128 +186,108 @@ export default function LeadModal({
           {/* Status e Interesse */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label
-                htmlFor="status"
-                className="mb-1 block text-sm font-medium"
-              >
-                Status
+              <label htmlFor="status" className="mb-1 block text-sm font-semibold text-gray-700">
+                Status do Funil
               </label>
               <select
                 id="status"
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                className="w-full rounded-md border bg-white p-2"
+                className="w-full rounded-lg border border-gray-300 bg-white p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
               >
                 {STATUS_OPTIONS.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
+                  <option key={status} value={status}>{status}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label
-                htmlFor="interesse"
-                className="mb-1 block text-sm font-medium"
-              >
-                Interesse
+              <label htmlFor="interesse" className="mb-1 block text-sm font-semibold text-gray-700">
+                Tipo de Interesse
               </label>
               <select
                 id="interesse"
                 name="interesse"
                 value={formData.interesse}
                 onChange={handleChange}
-                className="w-full rounded-md border bg-white p-2"
+                className="w-full rounded-lg border border-gray-300 bg-white p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
               >
-                <option value="">-- Nenhum --</option>
                 {INTERESSE_OPTIONS.map((interesse) => (
-                  <option key={interesse} value={interesse}>
-                    {interesse}
-                  </option>
+                  <option key={interesse} value={interesse}>{interesse}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* Imóvel */}
-          <div>
-            <label
-              htmlFor="propertyId"
-              className="mb-1 block text-sm font-medium"
-            >
+          {/* Imóvel de Interesse (Opcional) */}
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <label htmlFor="propertyId" className="mb-1 block text-sm font-semibold text-gray-700 flex justify-between">
               Imóvel de Interesse
+              <span className="text-xs font-normal text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">Opcional</span>
             </label>
-            <select
-              id="propertyId"
-              name="propertyId"
-              value={formData.propertyId ?? ''}
-              onChange={handleChange}
-              className="w-full rounded-md border bg-white p-2"
-              required
-            >
-              <option value="">Selecione um imóvel...</option>
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title} — {p.location}
-                </option>
-              ))}
-            </select>
+            
+            <div className="relative">
+              <select
+                id="propertyId"
+                name="propertyId"
+                // Converte null para string vazia para o value do select
+                value={formData.propertyId ?? ''} 
+                onChange={handleChange}
+                disabled={isLoadingProps}
+                className="w-full rounded-lg border border-gray-300 bg-white p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none appearance-none"
+              >
+                <option value="">-- Lead Geral (Sem imóvel vinculado) --</option>
+                {properties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title} (Ref: {p.id})
+                  </option>
+                ))}
+              </select>
+              {isLoadingProps && (
+                <div className="absolute right-3 top-3 text-gray-400">
+                   <Loader2 className="w-4 h-4 animate-spin" />
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Vincule este lead a um imóvel específico se ele veio de um anúncio ou landing page de imóvel.
+            </p>
           </div>
 
-          {/* 🔹 Descrição com Ler mais */}
+          {/* Descrição */}
           <div>
-            <label
-              htmlFor="descricao"
-              className="mb-1 block text-sm font-medium"
-            >
-              Descrição
+            <label htmlFor="descricao" className="mb-1 block text-sm font-semibold text-gray-700">
+              Observações / Histórico
             </label>
             <textarea
               id="descricao"
               name="descricao"
               value={formData.descricao}
               onChange={handleChange}
-              className="w-full rounded-md border p-2 min-h-[100px]"
-              placeholder="Adicione observações ou detalhes sobre o lead..."
+              rows={4}
+              className="w-full rounded-lg border border-gray-300 p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none resize-y"
+              placeholder="Digite detalhes importantes sobre o cliente, preferências, horários para contato, etc..."
             />
-            {formData.descricao && formData.descricao.length > 100 && (
-              <button
-                type="button"
-                onClick={() => setExpanded((prev) => !prev)}
-                className="mt-1 text-blue-600 text-sm hover:underline"
-              >
-                {expanded ? 'Ler menos' : 'Ler mais'}
-              </button>
-            )}
-            {expanded && (
-              <p className="text-sm text-gray-700 mt-2 whitespace-pre-line">
-                {formData.descricao}
-              </p>
-            )}
           </div>
 
-          {/* Botões */}
-          <div className="flex justify-end gap-3 pt-4">
+          {/* Botões - Footer Fixo no fim do scroll se necessário */}
+          <div className="flex justify-end gap-3 pt-4 border-t mt-4">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-lg px-4 py-2 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              className="rounded-lg px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white shadow hover:bg-blue-700 disabled:bg-blue-300"
+              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:bg-blue-400 flex items-center gap-2 transition-colors"
             >
-              {isSubmitting
-                ? 'Salvando...'
-                : leadToEdit
-                ? 'Salvar Alterações'
-                : 'Criar Lead'}
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isSubmitting ? 'Salvando...' : (leadToEdit ? 'Salvar Alterações' : 'Criar Lead')}
             </button>
           </div>
         </form>
