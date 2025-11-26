@@ -6,4 +6,5 @@ import lombok.Data;
 public class SignatureDTO {
     private String signatureImage;
     private String signerName;
+    private String role;
 }

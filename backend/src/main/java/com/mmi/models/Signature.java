@@ -16,12 +16,14 @@ public class Signature {
     @Column(name = "signature_image", columnDefinition="TEXT")
     private String signatureImage;
 
-    @Column(name = "signer_name", nullable = true)
+    @Column(name = "signer_name")
     private String signerName;
+
+    @Column(name = "role")
+    private String role;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id")
     @JsonBackReference
     private Contract contract;
-
 }

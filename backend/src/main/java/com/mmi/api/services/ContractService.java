@@ -20,8 +20,11 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ContractService {
@@ -34,8 +37,9 @@ public class ContractService {
         this.contractRepository = contractRepository;
     }
 
+    // ✅ Cria o contrato inicial (sem assinaturas visuais ainda)
     public Contract createContractForSigning(List<ClauseDTO> clauses) throws IOException {
-        byte[] pdfBytes = generateContractPDF(clauses);
+        byte[] pdfBytes = generateContractPDF(clauses, new ArrayList<>());
         Contract contract = new Contract();
         contract.setPdfData(pdfBytes);
         return contractRepository.save(contract);
@@ -74,30 +78,49 @@ public class ContractService {
         clauseRepository.deleteById(id);
     }
 
+    // ✅ Adiciona assinatura e REGERA o PDF com os desenhos
     public Signature addSignatureToContract(UUID uuid, SignatureDTO signatureDTO) {
         Contract contract = getContractByUuid(uuid);
+
         Signature newSignature = new Signature();
         newSignature.setSignatureImage(signatureDTO.getSignatureImage());
         newSignature.setSignerName(signatureDTO.getSignerName());
+        newSignature.setRole(signatureDTO.getRole()); // Salva o Cargo
         newSignature.setContract(contract);
+
         contract.getSignatures().add(newSignature);
+
+        // --- LÓGICA DE REGERAÇÃO DO PDF ---
+        try {
+            // Busca todas as cláusulas para reconstruir o texto
+            // (Assumindo que o contrato usa todas as cláusulas ativas no sistema)
+            List<ClauseDTO> allClauses = clauseRepository.findAll().stream()
+                    .map(c -> new ClauseDTO(c.getTitle(), c.getContent()))
+                    .collect(Collectors.toList());
+
+            // Regera o PDF passando as cláusulas E a lista atualizada de assinaturas
+            byte[] updatedPdf = generateContractPDF(allClauses, contract.getSignatures());
+            contract.setPdfData(updatedPdf);
+
+        } catch (IOException e) {
+            throw new RuntimeException("Erro ao processar PDF com novas assinaturas", e);
+        }
+        // ----------------------------------
+
         contractRepository.save(contract);
         return newSignature;
     }
 
-    // ==================================================================================
-    // ✅ LÓGICA DE GERAÇÃO DE PDF ATUALIZADA
-    // ==================================================================================
-
-    public byte[] generateContractPDF(List<ClauseDTO> clauses) throws IOException {
+    // ✅ Método Principal de Geração de PDF (Texto + Assinaturas)
+    public byte[] generateContractPDF(List<ClauseDTO> clauses, List<Signature> signatures) throws IOException {
         try (PDDocument document = new PDDocument()) {
 
-            // ✅ 1. Carregar as imagens de fundo (Modelos)
-            // Certifique-se de que esses arquivos existem em src/main/resources/images/
             PDImageXObject bgStandard = loadImage(document, "images/papel_timbrado.jpg");
             PDImageXObject bgSignature = loadImage(document, "images/assinatura_timbrado.jpg");
 
-            // Cria a primeira página com o fundo padrão
+            // =================================================================================
+            // PARTE 1: CONTEÚDO DO TEXTO (CLÁUSULAS)
+            // =================================================================================
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
             drawBackground(document, page, bgStandard);
@@ -105,15 +128,13 @@ public class ContractService {
             PDPageContentStream content = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true);
 
             float margin = 50;
-            // Ajustar altura baseado no A4
             float pageHeight = page.getMediaBox().getHeight();
             float pageWidth = page.getMediaBox().getWidth();
-            float yStart = pageHeight - 100; // Margem superior maior por causa do cabeçalho da imagem
+            float yStart = pageHeight - 100;
             float yPosition = yStart;
-            float footerHeight = 50; // Espaço reservado para numeração
+            float footerHeight = 50;
             float lineSpacing = 16;
 
-            // ✅ 2. Fonte Times New Roman
             content.beginText();
             content.setFont(PDType1Font.TIMES_BOLD, 18);
             content.newLineAtOffset(margin, yPosition);
@@ -121,9 +142,8 @@ public class ContractService {
             content.endText();
             yPosition -= 40;
 
-            // Loop das Cláusulas
             for (ClauseDTO clause : clauses) {
-                // Título da Cláusula (Times Bold)
+                // Título
                 content.beginText();
                 content.setFont(PDType1Font.TIMES_BOLD, 14);
                 content.newLineAtOffset(margin, yPosition);
@@ -131,7 +151,7 @@ public class ContractService {
                 content.endText();
                 yPosition -= 20;
 
-                // Conteúdo da Cláusula (Times Roman)
+                // Conteúdo
                 content.setFont(PDType1Font.TIMES_ROMAN, 12);
                 String[] words = clause.getContent().split(" ");
                 StringBuilder line = new StringBuilder();
@@ -139,7 +159,6 @@ public class ContractService {
 
                 for (String word : words) {
                     String temp = line + word + " ";
-                    // Cálculo de largura ajustado para Times Roman
                     float textWidth = PDType1Font.TIMES_ROMAN.getStringWidth(temp) / 1000 * 12;
 
                     if (textWidth > maxWidth) {
@@ -153,22 +172,17 @@ public class ContractService {
                         line.append(word).append(" ");
                     }
 
-                    // Verifica se a página acabou (considerando margem inferior)
                     if (yPosition < footerHeight + 40) {
                         content.close();
-
-                        // ✅ Cria nova página padrão com imagem de fundo
                         page = new PDPage(PDRectangle.A4);
                         document.addPage(page);
                         drawBackground(document, page, bgStandard);
-
                         content = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true);
                         content.setFont(PDType1Font.TIMES_ROMAN, 12);
                         yPosition = yStart;
                     }
                 }
 
-                // Escreve o restante da linha
                 if (!line.isEmpty()) {
                     content.beginText();
                     content.newLineAtOffset(margin, yPosition);
@@ -177,19 +191,86 @@ public class ContractService {
                     yPosition -= lineSpacing * 2;
                 }
             }
-
             content.close();
 
-            // ✅ 3. Página de Assinatura (Modelo Especial)
+            // =================================================================================
+            // PARTE 2: PÁGINA DE ASSINATURAS (COM DESENHOS)
+            // =================================================================================
             PDPage signaturePage = new PDPage(PDRectangle.A4);
             document.addPage(signaturePage);
-            // Desenha o fundo específico de assinatura
             drawBackground(document, signaturePage, bgSignature);
 
-            // Caso queira adicionar texto dinâmico na página de assinatura, faça aqui.
-            // Se o modelo já tem as linhas desenhadas, não precisamos desenhar nada.
+            try (PDPageContentStream sigStream = new PDPageContentStream(document, signaturePage, PDPageContentStream.AppendMode.APPEND, true, true)) {
 
-            // ✅ 4. Numeração de Páginas (Passo final: iterar em todas as páginas)
+                float sigY = pageHeight - 150;
+                float sigXStart = margin;
+
+                // Título da seção
+                sigStream.beginText();
+                sigStream.setFont(PDType1Font.TIMES_BOLD, 16);
+                sigStream.newLineAtOffset(sigXStart, sigY + 40);
+                sigStream.showText("Assinaturas");
+                sigStream.endText();
+
+                int colIndex = 0; // 0 = esquerda, 1 = direita
+
+                for (Signature sig : signatures) {
+                    // Processar imagem Base64 (remover prefixo se existir)
+                    String base64Image = sig.getSignatureImage();
+                    if (base64Image != null && base64Image.contains(",")) {
+                        base64Image = base64Image.split(",")[1];
+                    }
+
+                    if (base64Image != null && !base64Image.isEmpty()) {
+                        try {
+                            byte[] imageBytes = Base64.getDecoder().decode(base64Image);
+                            PDImageXObject pdImage = PDImageXObject.createFromByteArray(document, imageBytes, "sig_" + sig.getId());
+
+                            // Define posição X baseada na coluna
+                            float currentX = (colIndex % 2 == 0) ? sigXStart : sigXStart + 250;
+
+                            // Desenha a imagem da assinatura
+                            // Ajuste o tamanho (width: 150, height: 60) conforme necessário
+                            sigStream.drawImage(pdImage, currentX, sigY, 150, 60);
+
+                            // Desenha a linha abaixo da assinatura
+                            sigStream.setLineWidth(1f);
+                            sigStream.moveTo(currentX, sigY - 5);
+                            sigStream.lineTo(currentX + 150, sigY - 5);
+                            sigStream.stroke();
+
+                            // Nome do assinante
+                            sigStream.beginText();
+                            sigStream.setFont(PDType1Font.TIMES_BOLD, 11);
+                            sigStream.newLineAtOffset(currentX, sigY - 20);
+                            String name = sig.getSignerName() != null ? sig.getSignerName() : "";
+                            sigStream.showText(name);
+                            sigStream.endText();
+
+                            // Cargo / Role
+                            sigStream.beginText();
+                            sigStream.setFont(PDType1Font.TIMES_ROMAN, 10);
+                            sigStream.newLineAtOffset(currentX, sigY - 35);
+                            String role = sig.getRole() != null ? sig.getRole().toUpperCase() : "PARTICIPANTE";
+                            sigStream.showText(role);
+                            sigStream.endText();
+
+                            colIndex++;
+                            if (colIndex % 2 == 0) {
+                                sigY -= 120;
+                            }
+
+                            if (sigY < 50) {
+                                break;
+                            }
+
+                        } catch (IllegalArgumentException e) {
+                            System.err.println("Erro ao decodificar assinatura: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+
             int totalPages = document.getNumberOfPages();
             int pageCounter = 1;
 
@@ -201,10 +282,9 @@ public class ContractService {
                 footerStream.beginText();
                 footerStream.setFont(PDType1Font.TIMES_ROMAN, 10);
 
-                // Calcula posição para ficar na borda inferior direita
                 float textWidth = PDType1Font.TIMES_ROMAN.getStringWidth(pageText) / 1000 * 10;
                 float xFooter = pageWidth - margin - textWidth;
-                float yFooter = 30; // 30px da borda inferior
+                float yFooter = 30;
 
                 footerStream.newLineAtOffset(xFooter, yFooter);
                 footerStream.showText(pageText);
@@ -223,7 +303,6 @@ public class ContractService {
     private void drawBackground(PDDocument doc, PDPage page, PDImageXObject image) throws IOException {
         if (image == null) return;
         try (PDPageContentStream bgStream = new PDPageContentStream(doc, page, PDPageContentStream.AppendMode.PREPEND, true, true)) {
-            // Desenha a imagem cobrindo toda a página (A4)
             bgStream.drawImage(image, 0, 0, page.getMediaBox().getWidth(), page.getMediaBox().getHeight());
         }
     }

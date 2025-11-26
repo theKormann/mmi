@@ -4,13 +4,14 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import axios from 'axios'
 import SignatureCanvas from 'react-signature-canvas'
-import { Loader2, Save, Trash2, ArrowLeft, PenTool, ArrowDownCircle } from 'lucide-react'
+import { Loader2, Save, ArrowLeft, PenTool, ArrowDownCircle, UserCircle } from 'lucide-react'
 import Link from 'next/link'
 
 interface Signature {
   id: number
   signatureImage: string
   signerName: string
+  role: string // ✅ Campo novo para tipagem
 }
 
 interface Contract {
@@ -26,8 +27,11 @@ export default function SignContractPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSigning, setIsSigning] = useState(false)
-  const [signerName, setSignerName] = useState('')
   
+  // Estados do formulário
+  const [signerName, setSignerName] = useState('')
+  const [signerRole, setSignerRole] = useState('') // ✅ Estado para o Cargo
+
   // Ref para rolar até a assinatura em mobile
   const signatureSectionRef = useRef<HTMLDivElement>(null)
 
@@ -56,10 +60,11 @@ export default function SignContractPage() {
     }
   }, [uuid])
 
-  // Função para limpar e forçar resize se necessário
+  // Função para limpar e resetar estados
   const handleClearSignature = () => {
     sigCanvas.current?.clear()
     setSignerName('')
+    setSignerRole('') // ✅ Limpa o cargo também
   }
 
   const scrollToSignature = () => {
@@ -67,17 +72,25 @@ export default function SignContractPage() {
   }
 
   const handleSaveSignature = async () => {
+    // 1. Valida Desenho
     if (sigCanvas.current?.isEmpty()) {
       alert('Por favor, desenhe sua assinatura primeiro.')
       return
     }
     
+    // 2. Valida Nome
     if (!signerName.trim()) {
       alert('Por favor, digite seu nome completo.')
       return
     }
 
-    // Pega a imagem (com fundo transparente para não salvar branco)
+    // 3. ✅ Valida Cargo
+    if (!signerRole) {
+      alert('Por favor, selecione qual o seu papel neste contrato (Ex: Locatário).')
+      return
+    }
+
+    // Pega a imagem (com fundo transparente)
     const signatureImage = sigCanvas.current?.getTrimmedCanvas().toDataURL('image/png')
 
     if (!signatureImage) {
@@ -90,7 +103,8 @@ export default function SignContractPage() {
 
       const body = {
         signatureImage: signatureImage,
-        signerName: signerName.trim()
+        signerName: signerName.trim(),
+        role: signerRole // ✅ Envia o cargo para a API
       }
 
       await axios.post(`${API_URL}/api/contracts/${uuid}/signatures`, body, {
@@ -99,7 +113,7 @@ export default function SignContractPage() {
 
       await fetchContract()
       handleClearSignature()
-      alert('Assinatura salva com sucesso!')
+      alert('Assinatura salva com sucesso! O documento foi atualizado.')
     } catch (err) {
       alert('Erro ao salvar assinatura.')
       console.error(err)
@@ -178,12 +192,8 @@ export default function SignContractPage() {
                 <h2 className="text-lg font-bold text-gray-800">Sua Assinatura</h2>
               </div>
               
-              <p className="text-sm text-gray-500 mb-3">
-                Use o dedo ou mouse para assinar abaixo.
-              </p>
-
               {/* Área do Canvas com touch-none para evitar scroll da página ao desenhar */}
-              <div className="relative border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 touch-none overflow-hidden">
+              <div className="relative border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 touch-none overflow-hidden mb-4">
                 {!isSigning && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-10">
                         <span className="text-4xl font-serif italic text-gray-500">Assine Aqui</span>
@@ -197,42 +207,66 @@ export default function SignContractPage() {
                   minWidth={1.5}
                   maxWidth={3.5}
                   canvasProps={{ 
-                      className: 'w-full h-48 block cursor-crosshair' 
-                      // 'block' remove espaços fantasmas inline
+                      className: 'w-full h-40 block cursor-crosshair' 
                   }}
                 />
               </div>
               
-              <div className="flex justify-end mt-1">
-                  <button onClick={handleClearSignature} className="text-xs text-red-500 hover:text-red-700 font-medium py-1 px-2">
-                      Limpar desenho
-                  </button>
+              {/* Campos de Entrada */}
+              <div className="space-y-4">
+                {/* Input Nome */}
+                <div>
+                  <label htmlFor="signerName" className="block text-sm font-semibold text-gray-700 mb-1">
+                    Nome Completo
+                  </label>
+                  <input
+                    type="text"
+                    id="signerName"
+                    value={signerName}
+                    onChange={(e) => setSignerName(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex: João da Silva"
+                  />
+                </div>
+
+                {/* ✅ SELECT DE CARGO */}
+                <div>
+                  <label htmlFor="signerRole" className="block text-sm font-semibold text-gray-700 mb-1">
+                    Eu sou:
+                  </label>
+                  <div className="relative">
+                    <select
+                        id="signerRole"
+                        value={signerRole}
+                        onChange={(e) => setSignerRole(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-700"
+                    >
+                        <option value="" disabled>Selecione seu papel...</option>
+                        <option value="Locador">Locador (Proprietário)</option>
+                        <option value="Locatário">Locatário (Inquilino)</option>
+                        <option value="Fiador">Fiador</option>
+                        <option value="Testemunha">Testemunha</option>
+                    </select>
+                    <UserCircle className="w-5 h-5 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+                  </div>
+                </div>
               </div>
 
-              {/* Input Nome */}
-              <div className="mt-2">
-                <label htmlFor="signerName" className="block text-sm font-semibold text-gray-700 mb-1">
-                  Nome Completo (Legível)
-                </label>
-                <input
-                  type="text"
-                  id="signerName"
-                  value={signerName}
-                  onChange={(e) => setSignerName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
-                  placeholder="Ex: João da Silva"
-                />
-              </div>
-
-              {/* Botões de Ação - Maiores para Mobile */}
-              <div className="mt-6">
+              {/* Botões de Ação */}
+              <div className="mt-6 flex gap-3">
+                 <button 
+                    onClick={handleClearSignature} 
+                    className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                 >
+                    Limpar
+                 </button>
                 <button
                   onClick={handleSaveSignature}
                   disabled={isSigning}
-                  className="w-full bg-blue-600 text-white px-4 py-3.5 rounded-lg shadow-md hover:bg-blue-700 disabled:bg-blue-300 flex items-center justify-center gap-2 transition-all active:scale-[0.98] font-medium text-lg"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 disabled:bg-blue-300 flex items-center justify-center gap-2 transition-all active:scale-[0.98] font-medium"
                 >
-                  {isSigning ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
-                  {isSigning ? 'Salvando...' : 'Confirmar Assinatura'}
+                  {isSigning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                  {isSigning ? 'Salvando...' : 'Assinar Documento'}
                 </button>
               </div>
             </div>
@@ -244,14 +278,17 @@ export default function SignContractPage() {
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
                   {contract.signatures.map(sig => (
                     <div key={sig.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <div className="bg-white p-1 rounded border h-12 w-20 flex items-center justify-center">
+                      <div className="bg-white p-1 rounded border h-12 w-20 flex items-center justify-center shrink-0">
                         <img src={sig.signatureImage} alt="Assinatura" className="max-h-full max-w-full object-contain" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-800 truncate">
                           {sig.signerName}
                         </p>
-                        <p className="text-xs text-gray-500">Assinado digitalmente</p>
+                        {/* ✅ Exibe o cargo na lista com estilo de badge */}
+                        <span className="inline-block px-2 py-0.5 mt-1 bg-blue-50 text-blue-700 text-xs rounded-md font-medium border border-blue-100">
+                            {sig.role || 'Assinante'}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -266,6 +303,7 @@ export default function SignContractPage() {
         </div>
       </div>
 
+      {/* Botão Flutuante (Apenas Mobile) */}
       <div className="lg:hidden fixed bottom-6 right-6 z-50">
         <button 
             onClick={scrollToSignature}
