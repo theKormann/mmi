@@ -40,13 +40,19 @@ public class ContractController {
     }
 
     @PostMapping("/{uuid}/signatures")
-    public ResponseEntity<Signature> addSignature(
-            @PathVariable UUID uuid,
-            @RequestBody SignatureDTO signatureDTO) {
+    public ResponseEntity<?> addSignature(
+                                           @PathVariable UUID uuid,
+                                           @RequestBody SignatureDTO signatureDTO) {
 
-        Signature newSignature = contractService.addSignerToContract(uuid, signatureDTO);
-
-        return new ResponseEntity<>(newSignature, HttpStatus.CREATED);
+        try {
+            Signature newSignature = contractService.addSignerToContract(uuid, signatureDTO);
+            return new ResponseEntity<>(newSignature, HttpStatus.CREATED);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Erro ao processar assinatura: " + e.getMessage());
+        }
     }
 
 }
