@@ -22,6 +22,12 @@ public class Signature {
     @Column(name = "role")
     private String role;
 
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "cpf")
+    private String cpf;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id")
     @JsonBackReference

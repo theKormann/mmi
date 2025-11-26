@@ -1,23 +1,25 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import axios from 'axios'
-import SignatureCanvas from 'react-signature-canvas'
-import { Loader2, Save, ArrowLeft, PenTool, ArrowDownCircle, UserCircle } from 'lucide-react'
+import { Loader2, Send, ArrowLeft, Mail, ShieldCheck, User, FileText } from 'lucide-react'
 import Link from 'next/link'
 
-interface Signature {
-  id: number
-  signatureImage: string
-  signerName: string
-  role: string // ✅ Campo novo para tipagem
+// Função utilitária para máscara de CPF
+const maskCPF = (value: string) => {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+    .replace(/(-\d{2})\d+?$/, '$1')
 }
 
 interface Contract {
   uuid: string
   pdfData: string
-  signatures: Signature[]
+  signatures: any[]
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
@@ -25,293 +27,200 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL
 export default function SignContractPage() {
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isSigning, setIsSigning] = useState(false)
+  const [isSending, setIsSending] = useState(false)
   
-  // Estados do formulário
+  // Estados do formulário (Dados Reais para Clicksign)
   const [signerName, setSignerName] = useState('')
-  const [signerRole, setSignerRole] = useState('') // ✅ Estado para o Cargo
-
-  // Ref para rolar até a assinatura em mobile
-  const signatureSectionRef = useRef<HTMLDivElement>(null)
+  const [signerEmail, setSignerEmail] = useState('')
+  const [signerCpf, setSignerCpf] = useState('')
+  const [signerRole, setSignerRole] = useState('')
 
   const params = useParams()
   const { uuid } = params as { uuid: string }
-  const sigCanvas = useRef<SignatureCanvas>(null)
+
+  useEffect(() => {
+    if (uuid) fetchContract()
+  }, [uuid])
 
   const fetchContract = async () => {
-    if (!uuid) return
     try {
       setLoading(true)
       const res = await axios.get(`${API_URL}/api/contracts/${uuid}`)
       setContract(res.data)
-      setError(null)
     } catch (err) {
-      setError('Contrato não encontrado ou expirado.')
       console.error(err)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    if (uuid) {
-      fetchContract()
-    }
-  }, [uuid])
+  const handleSendForSignature = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-  // Função para limpar e resetar estados
-  const handleClearSignature = () => {
-    sigCanvas.current?.clear()
-    setSignerName('')
-    setSignerRole('') // ✅ Limpa o cargo também
-  }
-
-  const scrollToSignature = () => {
-    signatureSectionRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  const handleSaveSignature = async () => {
-    // 1. Valida Desenho
-    if (sigCanvas.current?.isEmpty()) {
-      alert('Por favor, desenhe sua assinatura primeiro.')
-      return
-    }
-    
-    // 2. Valida Nome
-    if (!signerName.trim()) {
-      alert('Por favor, digite seu nome completo.')
+    if (!signerName || !signerEmail || !signerCpf || !signerRole) {
+      alert('Todos os campos são obrigatórios para a validação jurídica.')
       return
     }
 
-    // 3. ✅ Valida Cargo
-    if (!signerRole) {
-      alert('Por favor, selecione qual o seu papel neste contrato (Ex: Locatário).')
-      return
-    }
-
-    // Pega a imagem (com fundo transparente)
-    const signatureImage = sigCanvas.current?.getTrimmedCanvas().toDataURL('image/png')
-
-    if (!signatureImage) {
-      alert('Não foi possível capturar a assinatura.')
-      return
+    // Validação simples de CPF (tamanho)
+    if (signerCpf.length < 14) {
+        alert('CPF incompleto.')
+        return
     }
 
     try {
-      setIsSigning(true)
+      setIsSending(true)
 
       const body = {
-        signatureImage: signatureImage,
-        signerName: signerName.trim(),
-        role: signerRole // ✅ Envia o cargo para a API
+        signerName,
+        email: signerEmail,
+        cpf: signerCpf.replace(/\D/g, ''), // Envia apenas números
+        role: signerRole
       }
 
-      await axios.post(`${API_URL}/api/contracts/${uuid}/signatures`, body, {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      await axios.post(`${API_URL}/api/contracts/${uuid}/signatures`, body)
 
-      await fetchContract()
-      handleClearSignature()
-      alert('Assinatura salva com sucesso! O documento foi atualizado.')
+      alert(`Sucesso! Um e-mail foi enviado para ${signerEmail} com o link seguro para assinatura.`)
+      
+      // Limpar formulário
+      setSignerName('')
+      setSignerEmail('')
+      setSignerCpf('')
+      setSignerRole('')
+      
+      fetchContract() // Atualiza lista de "Pendentes"
     } catch (err) {
-      alert('Erro ao salvar assinatura.')
+      alert('Erro ao solicitar assinatura. Verifique os dados.')
       console.error(err)
     } finally {
-      setIsSigning(false)
+      setIsSending(false)
     }
   }
 
-  if (loading)
-    return (
-      <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-        <p className="mt-4 text-gray-600 font-medium">Carregando documento...</p>
-      </div>
-    )
-
-  if (error)
-    return (
-      <div className="flex flex-col justify-center items-center h-screen px-4">
-        <p className="text-center text-red-500 font-semibold mb-4">{error}</p>
-        <Link href="/admin/erp/contracts" className="text-blue-600 hover:underline flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" /> Voltar para Contratos
-        </Link>
-      </div>
-    )
-
-  if (!contract) return null
+  if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>
+  if (!contract) return <div>Contrato não encontrado.</div>
 
   const pdfUrl = `data:application/pdf;base64,${contract.pdfData}`
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0">
-      {/* Header Mobile Compacto */}
-      <div className="bg-white border-b sticky top-0 z-10 px-4 py-3 shadow-sm lg:static lg:shadow-none lg:border-none lg:bg-transparent lg:pt-8 lg:px-8">
-        <div className="container mx-auto">
-          <Link
-            href="/admin/erp/contracts"
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Voltar para lista</span>
-            <span className="sm:hidden">Voltar</span>
-          </Link>
-        </div>
-      </div>
-
-      <div className="container mx-auto p-4 lg:p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          
-          {/* COLUNA 1: Visualizador de PDF */}
-          <div className="lg:col-span-2 order-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-               {/* Altura ajustada: menor no mobile (50vh) para facilitar scroll até assinatura */}
-              <iframe
-                src={pdfUrl}
-                className="w-full h-[50vh] lg:h-[85vh] block"
-                title={`Contrato ${contract.uuid}`}
-              >
-                <div className="p-8 text-center">
-                  <p>Seu dispositivo não suporta visualização de PDF.</p>
-                  <a href={pdfUrl} download="contrato.pdf" className="text-blue-600 underline">Baixar PDF</a>
-                </div>
-              </iframe>
+    <div className="min-h-screen bg-gray-50 p-4 lg:p-8">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* Lado Esquerdo: PDF */}
+        <div className="bg-white rounded-xl shadow border h-[80vh] flex flex-col">
+            <div className="p-4 border-b flex items-center justify-between bg-gray-100 rounded-t-xl">
+                <span className="font-semibold text-gray-700 flex items-center gap-2">
+                    <FileText className="w-4 h-4"/> Visualização do Contrato
+                </span>
+                <a href={pdfUrl} download="contrato.pdf" className="text-blue-600 text-sm hover:underline">Baixar PDF</a>
             </div>
-          </div>
+            <iframe src={pdfUrl} className="w-full flex-1 rounded-b-xl" />
+        </div>
 
-          {/* COLUNA 2: Área de Ação (Assinatura e Lista) */}
-          <div className="lg:col-span-1 order-2 flex flex-col gap-6" ref={signatureSectionRef}>
-            
-            {/* Card de Assinatura */}
-            <div className="bg-white p-5 rounded-xl shadow-md border border-blue-100">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                    <PenTool className="w-5 h-5" />
-                </div>
-                <h2 className="text-lg font-bold text-gray-800">Sua Assinatura</h2>
-              </div>
-              
-              {/* Área do Canvas com touch-none para evitar scroll da página ao desenhar */}
-              <div className="relative border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 touch-none overflow-hidden mb-4">
-                {!isSigning && (
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-10">
-                        <span className="text-4xl font-serif italic text-gray-500">Assine Aqui</span>
+        {/* Lado Direito: Formulário de Assinatura Digital */}
+        <div className="space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow border border-blue-100">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-blue-600 rounded-full text-white shadow-lg shadow-blue-200">
+                        <ShieldCheck className="w-6 h-6" />
                     </div>
-                )}
-                
-                <SignatureCanvas
-                  ref={sigCanvas}
-                  penColor='black'
-                  velocityFilterWeight={0.7}
-                  minWidth={1.5}
-                  maxWidth={3.5}
-                  canvasProps={{ 
-                      className: 'w-full h-40 block cursor-crosshair' 
-                  }}
-                />
-              </div>
-              
-              {/* Campos de Entrada */}
-              <div className="space-y-4">
-                {/* Input Nome */}
-                <div>
-                  <label htmlFor="signerName" className="block text-sm font-semibold text-gray-700 mb-1">
-                    Nome Completo
-                  </label>
-                  <input
-                    type="text"
-                    id="signerName"
-                    value={signerName}
-                    onChange={(e) => setSignerName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ex: João da Silva"
-                  />
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800">Assinatura Digital</h2>
+                        <p className="text-sm text-gray-500">Integração Clicksign (MP 2.200-2/2001)</p>
+                    </div>
                 </div>
 
-                {/* ✅ SELECT DE CARGO */}
-                <div>
-                  <label htmlFor="signerRole" className="block text-sm font-semibold text-gray-700 mb-1">
-                    Eu sou:
-                  </label>
-                  <div className="relative">
-                    <select
-                        id="signerRole"
-                        value={signerRole}
-                        onChange={(e) => setSignerRole(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-700"
+                <form onSubmit={handleSendForSignature} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo (Conforme Documento)</label>
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                value={signerName}
+                                onChange={e => setSignerName(e.target.value)}
+                                className="w-full pl-10 p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Ex: Maria Silva"
+                            />
+                            <User className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">E-mail para Assinatura</label>
+                        <div className="relative">
+                            <input 
+                                type="email" 
+                                value={signerEmail}
+                                onChange={e => setSignerEmail(e.target.value)}
+                                className="w-full pl-10 p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="email@exemplo.com"
+                            />
+                            <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">O link para assinar será enviado para este e-mail.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+                            <input 
+                                type="text" 
+                                value={signerCpf}
+                                maxLength={14}
+                                onChange={e => setSignerCpf(maskCPF(e.target.value))}
+                                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="000.000.000-00"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Papel</label>
+                            <select 
+                                value={signerRole}
+                                onChange={e => setSignerRole(e.target.value)}
+                                className="w-full p-2.5 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                            >
+                                <option value="">Selecione...</option>
+                                <option value="Locador">Locador</option>
+                                <option value="Locatário">Locatário</option>
+                                <option value="Fiador">Fiador</option>
+                                <option value="Testemunha">Testemunha</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        disabled={isSending}
+                        className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 mt-4"
                     >
-                        <option value="" disabled>Selecione seu papel...</option>
-                        <option value="Locador">Locador (Proprietário)</option>
-                        <option value="Locatário">Locatário (Inquilino)</option>
-                        <option value="Fiador">Fiador</option>
-                        <option value="Testemunha">Testemunha</option>
-                    </select>
-                    <UserCircle className="w-5 h-5 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Botões de Ação */}
-              <div className="mt-6 flex gap-3">
-                 <button 
-                    onClick={handleClearSignature} 
-                    className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
-                 >
-                    Limpar
-                 </button>
-                <button
-                  onClick={handleSaveSignature}
-                  disabled={isSigning}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 disabled:bg-blue-300 flex items-center justify-center gap-2 transition-all active:scale-[0.98] font-medium"
-                >
-                  {isSigning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                  {isSigning ? 'Salvando...' : 'Assinar Documento'}
-                </button>
-              </div>
+                        {isSending ? <Loader2 className="animate-spin" /> : <Send className="w-5 h-5" />}
+                        {isSending ? 'Processando...' : 'Enviar para Assinatura'}
+                    </button>
+                </form>
             </div>
 
-            {/* Lista de Assinaturas Existentes */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-md font-bold text-gray-700 mb-4 border-b pb-2">Assinaturas Realizadas</h3>
-              {contract?.signatures?.length > 0 ? (
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
-                  {contract.signatures.map(sig => (
-                    <div key={sig.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <div className="bg-white p-1 rounded border h-12 w-20 flex items-center justify-center shrink-0">
-                        <img src={sig.signatureImage} alt="Assinatura" className="max-h-full max-w-full object-contain" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 truncate">
-                          {sig.signerName}
-                        </p>
-                        {/* ✅ Exibe o cargo na lista com estilo de badge */}
-                        <span className="inline-block px-2 py-0.5 mt-1 bg-blue-50 text-blue-700 text-xs rounded-md font-medium border border-blue-100">
-                            {sig.role || 'Assinante'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 bg-gray-50 rounded-lg border border-dashed">
-                    <p className="text-sm text-gray-400">Nenhuma assinatura ainda.</p>
-                </div>
-              )}
+            {/* Lista de Envios */}
+            <div className="bg-white p-5 rounded-xl shadow border border-gray-100">
+                <h3 className="font-bold text-gray-800 mb-3">Status das Assinaturas</h3>
+                {contract.signatures && contract.signatures.length > 0 ? (
+                    <ul className="space-y-3">
+                        {contract.signatures.map((sig, idx) => (
+                            <li key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                                <div>
+                                    <p className="font-semibold text-sm">{sig.signerName}</p>
+                                    <p className="text-xs text-gray-500">{sig.email}</p>
+                                </div>
+                                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                                    Enviado
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-gray-500">Nenhuma solicitação enviada ainda.</p>
+                )}
             </div>
-          </div>
         </div>
-      </div>
-
-      {/* Botão Flutuante (Apenas Mobile) */}
-      <div className="lg:hidden fixed bottom-6 right-6 z-50">
-        <button 
-            onClick={scrollToSignature}
-            className="bg-blue-600 text-white p-4 rounded-full shadow-xl hover:bg-blue-700 transition-transform active:scale-90 flex items-center justify-center"
-            aria-label="Ir para assinatura"
-        >
-            <ArrowDownCircle className="w-6 h-6" />
-        </button>
       </div>
     </div>
   )

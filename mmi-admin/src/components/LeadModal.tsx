@@ -238,7 +238,7 @@ export default function LeadModal({
                 <option value="">-- Lead Geral (Sem imóvel vinculado) --</option>
                 {properties.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.title} (Ref: {p.id})
+                    {p.title} (Id: {p.id})
                   </option>
                 ))}
               </select>
@@ -249,7 +249,7 @@ export default function LeadModal({
               )}
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              Vincule este lead a um imóvel específico se ele veio de um anúncio ou landing page de imóvel.
+              Vincule este lead a um imóvel específico ou não.
             </p>
           </div>
 

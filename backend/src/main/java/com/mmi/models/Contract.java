@@ -26,6 +26,8 @@ public class Contract {
     @JsonIgnore
     private byte[] pdfData;
 
+    private String externalKey;
+
     @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Signature> signatures = new ArrayList<>();

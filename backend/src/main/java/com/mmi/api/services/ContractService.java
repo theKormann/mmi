@@ -2,7 +2,6 @@ package com.mmi.api.services;
 
 import com.mmi.infra.ClauseRepository;
 import com.mmi.infra.ContractRepository;
-import com.mmi.models.Clause;
 import com.mmi.models.Contract;
 import com.mmi.models.Signature;
 import com.mmi.models.dto.ClauseDTO;
@@ -16,111 +15,120 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class ContractService {
 
     private final ClauseRepository clauseRepository;
     private final ContractRepository contractRepository;
+    private final ClicksignService clicksignService;
 
-    public ContractService(ClauseRepository clauseRepository, ContractRepository contractRepository) {
+    public ContractService(ClauseRepository clauseRepository,
+                           ContractRepository contractRepository,
+                           ClicksignService clicksignService) {
         this.clauseRepository = clauseRepository;
         this.contractRepository = contractRepository;
+        this.clicksignService = clicksignService;
     }
 
-    // ✅ Cria o contrato inicial (sem assinaturas visuais ainda)
+    /**
+     * 1. Gera o PDF
+     * 2. Salva no Banco (para ter UUID)
+     * 3. Faz Upload para Clicksign
+     * 4. Salva a 'key' da Clicksign no contrato
+     */
+    @Transactional
     public Contract createContractForSigning(List<ClauseDTO> clauses) throws IOException {
-        byte[] pdfBytes = generateContractPDF(clauses, new ArrayList<>());
+        // 1. Gera o PDF binário
+        byte[] pdfBytes = generateContractPDF(clauses);
+
         Contract contract = new Contract();
         contract.setPdfData(pdfBytes);
+
+        // 2. Salva localmente primeiro para gerar o UUID
+        contract = contractRepository.save(contract);
+
+        // 3. Upload para Clicksign e recuperação da Key do documento
+        String fileName = "Contrato_" + contract.getUuid() + ".pdf";
+        String clicksignDocKey = clicksignService.uploadDocument(pdfBytes, fileName);
+
+        // 4. Salva a chave externa para referência futura
+        contract.setExternalKey(clicksignDocKey);
+
         return contractRepository.save(contract);
     }
 
     public Contract getContractByUuid(UUID uuid) {
         return contractRepository.findByUuid(uuid)
-                .orElseThrow(() -> new EntityNotFoundException("Contrato não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Contrato não encontrado com UUID: " + uuid));
     }
 
     public List<Contract> findAllContracts() {
         return contractRepository.findAll();
     }
 
-    public List<Clause> findAllClauses() {
-        return clauseRepository.findAll();
-    }
-
-    public Clause createClause(ClauseDTO clauseDTO) {
-        Clause newClause = new Clause(clauseDTO.getTitle(), clauseDTO.getContent());
-        return clauseRepository.save(newClause);
-    }
-
-    public Clause updateClause(Long id, ClauseDTO clauseDetails) {
-        Clause clause = clauseRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Cláusula não encontrada com id: " + id));
-        clause.setTitle(clauseDetails.getTitle());
-        clause.setContent(clauseDetails.getContent());
-        return clauseRepository.save(clause);
-    }
-
-    public void deleteClause(Long id) {
-        if (!clauseRepository.existsById(id)) {
-            throw new EntityNotFoundException("Cláusula não encontrada com id: " + id);
-        }
-        clauseRepository.deleteById(id);
-    }
-
-    // ✅ Adiciona assinatura e REGERA o PDF com os desenhos
-    public Signature addSignatureToContract(UUID uuid, SignatureDTO signatureDTO) {
+    /**
+     * 1. Cria o registro local da assinatura
+     * 2. Cria o Signatário na Clicksign (API)
+     * 3. Vincula o Signatário ao Documento na Clicksign (Dispara o e-mail)
+     */
+    @Transactional
+    public Signature addSignerToContract(UUID uuid, SignatureDTO signatureDTO) {
         Contract contract = getContractByUuid(uuid);
 
+        if (contract.getExternalKey() == null || contract.getExternalKey().isEmpty()) {
+            throw new IllegalStateException("Este contrato não possui uma chave da Clicksign vinculada (externalKey).");
+        }
+
+        // Cria registro local
         Signature newSignature = new Signature();
-        newSignature.setSignatureImage(signatureDTO.getSignatureImage());
         newSignature.setSignerName(signatureDTO.getSignerName());
-        newSignature.setRole(signatureDTO.getRole()); // Salva o Cargo
+        newSignature.setEmail(signatureDTO.getEmail());
+        newSignature.setCpf(signatureDTO.getCpf());
+        newSignature.setRole(signatureDTO.getRole());
         newSignature.setContract(contract);
 
-        contract.getSignatures().add(newSignature);
-
-        // --- LÓGICA DE REGERAÇÃO DO PDF ---
         try {
-            // Busca todas as cláusulas para reconstruir o texto
-            // (Assumindo que o contrato usa todas as cláusulas ativas no sistema)
-            List<ClauseDTO> allClauses = clauseRepository.findAll().stream()
-                    .map(c -> new ClauseDTO(c.getTitle(), c.getContent()))
-                    .collect(Collectors.toList());
+            // A. Cria (ou recupera) o signatário na Clicksign
+            String signerKey = clicksignService.createSigner(signatureDTO);
 
-            // Regera o PDF passando as cláusulas E a lista atualizada de assinaturas
-            byte[] updatedPdf = generateContractPDF(allClauses, contract.getSignatures());
-            contract.setPdfData(updatedPdf);
+            // B. Vincula o signatário ao documento específico
+            // Isso é o que faz o e-mail chegar para a pessoa
+            clicksignService.addSignerToDocument(
+                    contract.getExternalKey(), // Key do Documento
+                    signerKey,                 // Key do Signatário
+                    signatureDTO.getRole()     // Papel (Locatário, Locador, etc)
+            );
 
-        } catch (IOException e) {
-            throw new RuntimeException("Erro ao processar PDF com novas assinaturas", e);
+            // Opcional: Salvar a key do signatário se tiver campo na entidade Signature
+            // newSignature.setExternalKey(signerKey);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao processar assinatura na Clicksign: " + e.getMessage(), e);
         }
-        // ----------------------------------
 
+        contract.getSignatures().add(newSignature);
         contractRepository.save(contract);
+
         return newSignature;
     }
 
-    // ✅ Método Principal de Geração de PDF (Texto + Assinaturas)
-    public byte[] generateContractPDF(List<ClauseDTO> clauses, List<Signature> signatures) throws IOException {
+    // =============================================================================================
+    // GERAÇÃO DO PDF (Mantida lógica visual, sem assinaturas desenhadas manualmente)
+    // =============================================================================================
+    public byte[] generateContractPDF(List<ClauseDTO> clauses) throws IOException {
         try (PDDocument document = new PDDocument()) {
 
+            // Tenta carregar imagem de fundo (Papel Timbrado)
             PDImageXObject bgStandard = loadImage(document, "images/papel_timbrado.jpg");
-            PDImageXObject bgSignature = loadImage(document, "images/assinatura_timbrado.jpg");
 
-            // =================================================================================
-            // PARTE 1: CONTEÚDO DO TEXTO (CLÁUSULAS)
-            // =================================================================================
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
             drawBackground(document, page, bgStandard);
@@ -135,15 +143,16 @@ public class ContractService {
             float footerHeight = 50;
             float lineSpacing = 16;
 
+            // Título
             content.beginText();
             content.setFont(PDType1Font.TIMES_BOLD, 18);
             content.newLineAtOffset(margin, yPosition);
-            content.showText("CONTRATO DE PRESTAÇÃO DE SERVIÇOS IMOBILIÁRIOS");
+            content.showText("CONTRATO DE PRESTAÇÃO DE SERVIÇOS");
             content.endText();
             yPosition -= 40;
 
             for (ClauseDTO clause : clauses) {
-                // Título
+                // Título da Cláusula
                 content.beginText();
                 content.setFont(PDType1Font.TIMES_BOLD, 14);
                 content.newLineAtOffset(margin, yPosition);
@@ -151,7 +160,7 @@ public class ContractService {
                 content.endText();
                 yPosition -= 20;
 
-                // Conteúdo
+                // Conteúdo da Cláusula (com quebra de linha)
                 content.setFont(PDType1Font.TIMES_ROMAN, 12);
                 String[] words = clause.getContent().split(" ");
                 StringBuilder line = new StringBuilder();
@@ -172,6 +181,7 @@ public class ContractService {
                         line.append(word).append(" ");
                     }
 
+                    // Verifica quebra de página
                     if (yPosition < footerHeight + 40) {
                         content.close();
                         page = new PDPage(PDRectangle.A4);
@@ -183,6 +193,7 @@ public class ContractService {
                     }
                 }
 
+                // Imprime o restante da linha
                 if (!line.isEmpty()) {
                     content.beginText();
                     content.newLineAtOffset(margin, yPosition);
@@ -193,106 +204,7 @@ public class ContractService {
             }
             content.close();
 
-            // =================================================================================
-            // PARTE 2: PÁGINA DE ASSINATURAS (COM DESENHOS)
-            // =================================================================================
-            PDPage signaturePage = new PDPage(PDRectangle.A4);
-            document.addPage(signaturePage);
-            drawBackground(document, signaturePage, bgSignature);
-
-            try (PDPageContentStream sigStream = new PDPageContentStream(document, signaturePage, PDPageContentStream.AppendMode.APPEND, true, true)) {
-
-                float sigY = pageHeight - 150;
-                float sigXStart = margin;
-
-                // Título da seção
-                sigStream.beginText();
-                sigStream.setFont(PDType1Font.TIMES_BOLD, 16);
-                sigStream.newLineAtOffset(sigXStart, sigY + 40);
-                sigStream.showText("Assinaturas");
-                sigStream.endText();
-
-                int colIndex = 0; // 0 = esquerda, 1 = direita
-
-                for (Signature sig : signatures) {
-                    // Processar imagem Base64 (remover prefixo se existir)
-                    String base64Image = sig.getSignatureImage();
-                    if (base64Image != null && base64Image.contains(",")) {
-                        base64Image = base64Image.split(",")[1];
-                    }
-
-                    if (base64Image != null && !base64Image.isEmpty()) {
-                        try {
-                            byte[] imageBytes = Base64.getDecoder().decode(base64Image);
-                            PDImageXObject pdImage = PDImageXObject.createFromByteArray(document, imageBytes, "sig_" + sig.getId());
-
-                            // Define posição X baseada na coluna
-                            float currentX = (colIndex % 2 == 0) ? sigXStart : sigXStart + 250;
-
-                            // Desenha a imagem da assinatura
-                            // Ajuste o tamanho (width: 150, height: 60) conforme necessário
-                            sigStream.drawImage(pdImage, currentX, sigY, 150, 60);
-
-                            // Desenha a linha abaixo da assinatura
-                            sigStream.setLineWidth(1f);
-                            sigStream.moveTo(currentX, sigY - 5);
-                            sigStream.lineTo(currentX + 150, sigY - 5);
-                            sigStream.stroke();
-
-                            // Nome do assinante
-                            sigStream.beginText();
-                            sigStream.setFont(PDType1Font.TIMES_BOLD, 11);
-                            sigStream.newLineAtOffset(currentX, sigY - 20);
-                            String name = sig.getSignerName() != null ? sig.getSignerName() : "";
-                            sigStream.showText(name);
-                            sigStream.endText();
-
-                            // Cargo / Role
-                            sigStream.beginText();
-                            sigStream.setFont(PDType1Font.TIMES_ROMAN, 10);
-                            sigStream.newLineAtOffset(currentX, sigY - 35);
-                            String role = sig.getRole() != null ? sig.getRole().toUpperCase() : "PARTICIPANTE";
-                            sigStream.showText(role);
-                            sigStream.endText();
-
-                            colIndex++;
-                            if (colIndex % 2 == 0) {
-                                sigY -= 120;
-                            }
-
-                            if (sigY < 50) {
-                                break;
-                            }
-
-                        } catch (IllegalArgumentException e) {
-                            System.err.println("Erro ao decodificar assinatura: " + e.getMessage());
-                        }
-                    }
-                }
-            }
-
-            int totalPages = document.getNumberOfPages();
-            int pageCounter = 1;
-
-            for (PDPage currentPage : document.getPages()) {
-                PDPageContentStream footerStream = new PDPageContentStream(document, currentPage, PDPageContentStream.AppendMode.APPEND, true, true);
-
-                String pageText = "Página " + pageCounter + " de " + totalPages;
-
-                footerStream.beginText();
-                footerStream.setFont(PDType1Font.TIMES_ROMAN, 10);
-
-                float textWidth = PDType1Font.TIMES_ROMAN.getStringWidth(pageText) / 1000 * 10;
-                float xFooter = pageWidth - margin - textWidth;
-                float yFooter = 30;
-
-                footerStream.newLineAtOffset(xFooter, yFooter);
-                footerStream.showText(pageText);
-                footerStream.endText();
-                footerStream.close();
-
-                pageCounter++;
-            }
+            // A Clicksign adiciona automaticamente a página de assinaturas/log ao final.
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             document.save(baos);
@@ -313,7 +225,7 @@ public class ContractService {
             InputStream inputStream = resource.getInputStream();
             return PDImageXObject.createFromByteArray(doc, inputStream.readAllBytes(), path);
         } catch (IOException e) {
-            System.err.println("Imagem não encontrada: " + path + ". Usando página em branco.");
+            // Logar erro se necessário, ou retornar null para seguir sem imagem
             return null;
         }
     }
