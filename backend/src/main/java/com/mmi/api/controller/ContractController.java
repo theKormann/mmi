@@ -22,15 +22,22 @@ public class ContractController {
         this.contractService = contractService;
     }
 
+
     @GetMapping
     public List<Contract> getAllContracts() {
         return contractService.findAllContracts();
     }
 
     @PostMapping
-    public ResponseEntity<String> createContract(@RequestBody List<ClauseDTO> clauses) throws Exception {
-        Contract newContract = contractService.createContractForSigning(clauses);
-        return ResponseEntity.ok(newContract.getUuid().toString());
+    public ResponseEntity<?> createContract(@RequestBody List<ClauseDTO> clauses) {
+        try {
+            Contract newContract = contractService.createContractForSigning(clauses);
+            return ResponseEntity.ok(newContract.getUuid().toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao criar contrato: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{uuid}")
