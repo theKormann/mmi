@@ -197,7 +197,7 @@ export default function CRMPage() {
       <LeadModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveLead}
+        onSave={handleSaveLead as unknown as (lead: any) => Promise<void>}
         leadToEdit={leadToEdit}
       />
     </>
