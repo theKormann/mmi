@@ -26,7 +26,7 @@ public class Lead {
     private String descricao;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "property_id")
+    @JoinColumn(name = "property_id", nullable = true)
     @JsonIgnoreProperties({"leads", "images"})
     private Property property;
 

@@ -182,6 +182,7 @@ export default function LeadModal({
                 onChange={handleChange}
                 className="w-full rounded-md border bg-white p-2"
               >
+                <option value="">-- Nenhum --</option>
                 {INTERESSE_OPTIONS.map((interesse) => (
                   <option key={interesse} value={interesse}>
                     {interesse}
