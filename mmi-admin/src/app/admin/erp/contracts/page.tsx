@@ -9,7 +9,7 @@ import {
   createClause,
   updateClause,
   Clause,
-} from '../../../../../services/api' 
+} from '../../../../../services/api'
 import {
   PlusCircle,
   Trash2,
@@ -18,10 +18,10 @@ import {
   ArrowLeft,
   FileDown,
   Loader2,
-  FileSignature, 
-  CheckCircle2,  
-  Clock,         
-  Eye,           
+  FileSignature,
+  CheckCircle2,
+  Clock,
+  Eye,
 } from 'lucide-react'
 import ClauseModal from '../../../../components/ClauseModal'
 import { AxiosResponse } from 'axios'
@@ -39,12 +39,13 @@ interface Signature {
 
 interface Contract {
   uuid: string
+  title: string
   signatures: Signature[]
 }
 
 export default function ContractsPage() {
   const [clauses, setClauses] = useState<Clause[]>([])
-  const [contracts, setContracts] = useState<Contract[]>([]) 
+  const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -140,9 +141,22 @@ export default function ContractsPage() {
       return
     }
 
+    // --- NOVO: PEDIR O NOME ---
+    const contractTitle = window.prompt("Digite um nome para este contrato (Ex: Contrato João Silva):");
+    if (!contractTitle) return; // Cancela se não digitar nada
+    // --------------------------
+
     try {
       setIsGenerating(true)
-      const res = await axios.post(`${API_URL}/api/contracts`, selected)
+
+      // --- NOVO: ENVIAR O OBJETO COM TÍTULO E CLÁUSULAS ---
+      const payload = {
+        title: contractTitle,
+        clauses: selected
+      }
+
+      const res = await axios.post(`${API_URL}/api/contracts`, payload)
+
       const contractUuid = res.data
       router.push(`/admin/erp/contracts/signatures/${contractUuid}`)
     } catch (err) {
@@ -184,11 +198,10 @@ export default function ContractsPage() {
 
           <div className="flex gap-3">
             <button
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow text-white transition-colors ${
-                isGenerating || selectedClauses.length === 0
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow text-white transition-colors ${isGenerating || selectedClauses.length === 0
                   ? 'bg-green-400 cursor-not-allowed'
                   : 'bg-green-600 hover:bg-green-700'
-              }`}
+                }`}
               onClick={handleGenerateContract}
               disabled={isGenerating || selectedClauses.length === 0}
             >
@@ -228,11 +241,10 @@ export default function ContractsPage() {
               return (
                 <div
                   key={id}
-                  className={`bg-white p-5 shadow-lg rounded-xl border flex flex-col justify-between transition-all duration-200 ${
-                    isSelected
+                  className={`bg-white p-5 shadow-lg rounded-xl border flex flex-col justify-between transition-all duration-200 ${isSelected
                       ? 'ring-2 ring-blue-400 border-blue-400'
                       : 'border-gray-100 hover:shadow-xl'
-                  }`}
+                    }`}
                 >
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900 mb-2">
@@ -242,8 +254,8 @@ export default function ContractsPage() {
                       {isExpanded
                         ? clause.content
                         : clause.content.length > 120
-                        ? `${clause.content.substring(0, 120)}...`
-                        : clause.content}
+                          ? `${clause.content.substring(0, 120)}...`
+                          : clause.content}
                     </p>
                     {clause.content.length > 120 && (
                       <button
@@ -257,11 +269,10 @@ export default function ContractsPage() {
                   <div className="flex items-center justify-between mt-4 pt-3 border-t">
                     <button
                       onClick={() => id !== -1 && toggleSelectClause(id)}
-                      className={`text-sm px-3 py-1 rounded-md transition-colors ${
-                        isSelected
+                      className={`text-sm px-3 py-1 rounded-md transition-colors ${isSelected
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       {isSelected ? 'Selecionada' : 'Selecionar'}
                     </button>
@@ -310,10 +321,11 @@ export default function ContractsPage() {
                     className="bg-white p-5 shadow-lg rounded-xl border border-gray-100 flex flex-col justify-between"
                   >
                     <div>
-                      <h3 className="text-base font-semibold text-gray-900 mb-3 truncate">
-                        Contrato{' '}
-                        <span className="font-mono text-xs bg-gray-100 p-1 rounded">
-                          {contract.uuid.split('-')[0]}...
+                      <h3 className="text-base font-semibold text-gray-900 mb-3 truncate flex flex-col">
+                     
+                        <span title={contract.title}>{contract.title}</span>
+                        <span className="font-mono text-xs text-gray-400 font-normal">
+                          ID: {contract.uuid.split('-')[0]}...
                         </span>
                       </h3>
 

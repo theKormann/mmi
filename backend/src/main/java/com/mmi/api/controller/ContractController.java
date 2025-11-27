@@ -4,11 +4,13 @@ import com.mmi.api.services.ContractService;
 import com.mmi.models.Contract;
 import com.mmi.models.Signature;
 import com.mmi.models.dto.ClauseDTO;
+import com.mmi.models.dto.CreateContractRequest;
 import com.mmi.models.dto.SignatureDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,15 +31,9 @@ public class ContractController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createContract(@RequestBody List<ClauseDTO> clauses) {
-        try {
-            Contract newContract = contractService.createContractForSigning(clauses);
-            return ResponseEntity.ok(newContract.getUuid().toString());
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erro ao criar contrato: " + e.getMessage());
-        }
+    public ResponseEntity<UUID> createContract(@RequestBody CreateContractRequest request) throws IOException, IOException {
+        Contract contract = contractService.createContractForSigning(request);
+        return ResponseEntity.ok(contract.getUuid());
     }
 
     @GetMapping("/{uuid}")

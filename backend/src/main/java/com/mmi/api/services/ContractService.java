@@ -6,6 +6,7 @@ import com.mmi.models.Clause;
 import com.mmi.models.Contract;
 import com.mmi.models.Signature;
 import com.mmi.models.dto.ClauseDTO;
+import com.mmi.models.dto.CreateContractRequest;
 import com.mmi.models.dto.SignatureDTO;
 import jakarta.persistence.EntityNotFoundException;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -67,28 +68,27 @@ public class ContractService {
         clauseRepository.deleteById(id);
     }
 
-    /**
-     * 1. Gera o PDF
-     * 2. Salva no Banco (para ter UUID)
-     * 3. Faz Upload para Clicksign
-     * 4. Salva a 'key' da Clicksign no contrato
-     */
     @Transactional
-    public Contract createContractForSigning(List<ClauseDTO> clauses) throws IOException {
-        // 1. Gera o PDF binário
-        byte[] pdfBytes = generateContractPDF(clauses);
+    public Contract createContractForSigning(CreateContractRequest request) throws IOException {
+
+        // 1. Gera o PDF binário (usa a lista de cláusulas do request)
+        byte[] pdfBytes = generateContractPDF(request.getClauses());
 
         Contract contract = new Contract();
+
+        // SETA O TÍTULO RECEBIDO
+        contract.setTitle(request.getTitle() != null && !request.getTitle().isEmpty()
+                ? request.getTitle()
+                : "Contrato Sem Título"); // Fallback caso venha vazio
+
         contract.setPdfData(pdfBytes);
 
         // 2. Salva localmente primeiro para gerar o UUID
         contract = contractRepository.save(contract);
 
-        // 3. Upload para Clicksign e recuperação da Key do documento
-        String fileName = "Contrato_" + contract.getUuid() + ".pdf";
-        String clicksignDocKey = clicksignService.uploadDocument(pdfBytes, fileName);
+        String safeFileName = contract.getTitle().replaceAll("[^a-zA-Z0-9.-]", "_") + "_" + contract.getUuid() + ".pdf";
+        String clicksignDocKey = clicksignService.uploadDocument(pdfBytes, safeFileName);
 
-        // 4. Salva a chave externa para referência futura
         contract.setExternalKey(clicksignDocKey);
 
         return contractRepository.save(contract);
@@ -103,11 +103,6 @@ public class ContractService {
         return contractRepository.findAll();
     }
 
-    /**
-     * 1. Cria o registro local da assinatura
-     * 2. Cria o Signatário na Clicksign (API)
-     * 3. Vincula o Signatário ao Documento na Clicksign (Dispara o e-mail)
-     */
     @Transactional
     public Signature addSignerToContract(UUID uuid, SignatureDTO signatureDTO) {
         Contract contract = getContractByUuid(uuid);
@@ -116,7 +111,6 @@ public class ContractService {
             throw new IllegalStateException("Este contrato não possui uma chave da Clicksign vinculada (externalKey).");
         }
 
-        // Cria registro local
         Signature newSignature = new Signature();
         newSignature.setSignerName(signatureDTO.getSignerName());
         newSignature.setEmail(signatureDTO.getEmail());
@@ -125,15 +119,12 @@ public class ContractService {
         newSignature.setContract(contract);
 
         try {
-            // A. Cria (ou recupera) o signatário na Clicksign
             String signerKey = clicksignService.createSigner(signatureDTO);
 
-            // B. Vincula o signatário ao documento específico
-            // Isso é o que faz o e-mail chegar para a pessoa
             clicksignService.addSignerToDocument(
                     contract.getExternalKey(), // Key do Documento
                     signerKey,                 // Key do Signatário
-                    signatureDTO.getRole()     // Papel (Locatário, Locador, etc)
+                    signatureDTO.getRole()
             );
 
             // Opcional: Salvar a key do signatário se tiver campo na entidade Signature
@@ -152,7 +143,6 @@ public class ContractService {
     public byte[] generateContractPDF(List<ClauseDTO> clauses) throws IOException {
         try (PDDocument document = new PDDocument()) {
 
-            // Tenta carregar imagem de fundo (Papel Timbrado)
             PDImageXObject bgStandard = loadImage(document, "images/papel_timbrado.jpg");
 
             PDPage page = new PDPage(PDRectangle.A4);
@@ -178,7 +168,6 @@ public class ContractService {
             yPosition -= 40;
 
             for (ClauseDTO clause : clauses) {
-                // Título da Cláusula
                 content.beginText();
                 content.setFont(PDType1Font.TIMES_BOLD, 14);
                 content.newLineAtOffset(margin, yPosition);
@@ -186,7 +175,6 @@ public class ContractService {
                 content.endText();
                 yPosition -= 20;
 
-                // Conteúdo da Cláusula (com quebra de linha)
                 content.setFont(PDType1Font.TIMES_ROMAN, 12);
                 String[] words = clause.getContent().split(" ");
                 StringBuilder line = new StringBuilder();
@@ -231,26 +219,21 @@ public class ContractService {
                     yPosition -= lineSpacing * 2;
                 }
             }
-            content.close(); // Fecha o stream da última página de conteúdo
-
-            // --- NOVA LÓGICA: NUMERAÇÃO DE PÁGINAS ---
+            content.close();
             int totalPages = document.getNumberOfPages();
             for (int i = 0; i < totalPages; i++) {
                 PDPage currentPage = document.getPage(i);
 
-                // Abre um novo stream em modo APPEND para desenhar SOBRE o que já existe
                 try (PDPageContentStream pageNumberStream = new PDPageContentStream(document, currentPage, PDPageContentStream.AppendMode.APPEND, true, true)) {
 
                     String pageText = String.format("Página %d de %d", i + 1, totalPages);
                     float fontSize = 10;
                     PDType1Font font = PDType1Font.TIMES_ROMAN;
 
-                    // Calcula a largura do texto para alinhar à direita
                     float textWidth = font.getStringWidth(pageText) / 1000 * fontSize;
 
-                    // Posição X: Largura da página - Margem Direita - Largura do Texto
                     float xOffset = currentPage.getMediaBox().getWidth() - margin - textWidth;
-                    // Posição Y: 30 pixels do fundo (Rodapé)
+
                     float yOffset = 30;
 
                     pageNumberStream.beginText();
@@ -260,7 +243,6 @@ public class ContractService {
                     pageNumberStream.endText();
                 }
             }
-            // -----------------------------------------
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             document.save(baos);
@@ -281,7 +263,6 @@ public class ContractService {
             InputStream inputStream = resource.getInputStream();
             return PDImageXObject.createFromByteArray(doc, inputStream.readAllBytes(), path);
         } catch (IOException e) {
-            // Logar erro se necessário, ou retornar null para seguir sem imagem
             return null;
         }
     }
