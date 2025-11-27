@@ -1,6 +1,6 @@
 package com.mmi.models;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -30,6 +30,6 @@ public class Signature {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id")
-    @JsonBackReference
+    @JsonIgnore
     private Contract contract;
 }
