@@ -151,7 +151,7 @@ export default function ContractsPage() {
   }
   const handleSaveClause = async (formData: ClauseFormData) => {
     try {
-      let res; if (clauseToEdit) { res = await updateClause(clauseToEdit.id!, formData); setClauses(prev => prev.map(c => c.id === clauseToEdit.id ? res.data : c)) } else { res = await createClause(formData); setClauses(prev => [res.data, ...prev]) }
+      let res: AxiosResponse<any, any, {}>; if (clauseToEdit) { res = await updateClause(clauseToEdit.id!, formData); setClauses(prev => prev.map(c => c.id === clauseToEdit.id ? res.data : c)) } else { res = await createClause(formData); setClauses(prev => [res.data, ...prev]) }
       setIsModalOpen(false); setClauseToEdit(null)
     } catch { alert('Erro ao salvar') }
   }
