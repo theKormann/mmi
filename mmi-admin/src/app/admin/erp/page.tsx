@@ -34,7 +34,7 @@ export default function ERPDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Link
-          href="/admin/erp/imoveis"
+          href="/admin/erp/realls"
           className="block p-6 bg-white shadow-lg rounded-xl border border-gray-100 hover:shadow-xl hover:border-blue-300 transition-all cursor-pointer h-full"
         >
           <div className="flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full mb-4">
