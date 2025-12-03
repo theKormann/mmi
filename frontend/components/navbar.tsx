@@ -10,10 +10,10 @@ import Image from "next/image"
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  const scrollToCategories = () => {
-    const categoriesSection = document.getElementById("categories-section")
-    if (categoriesSection) {
-      categoriesSection.scrollIntoView({ behavior: "smooth" })
+  const scrollToAbout = () => {
+    const aboutSection = document.getElementById("about-section")
+    if (aboutSection) {
+      aboutSection.scrollIntoView({ behavior: "smooth" })
     }
     setIsMenuOpen(false)
   }
@@ -27,7 +27,7 @@ export function Navbar() {
       src="/mmi-logo.png"
       alt="MMI Logo"
       width={240}  
-      height={78} // Mantém a maior altura (h-16)
+      height={78}
       className="
         h-16
         md:h-30
@@ -59,10 +59,10 @@ export function Navbar() {
                 Imóveis
               </Link>
               <button
-                onClick={scrollToCategories}
+                onClick={scrollToAbout}
                 className="text-[#4D4D4D] hover:text-[#1F4F91] font-medium transition-colors"
               >
-                Categorias
+                Quem Somos
               </button>
               <Link
                 href="https://wa.me/5511982724430?text=ol%C3%A1%20gostaria%20de%20conhecer%20algum%20im%C3%B3vel%20ideal%20para%20mim"
@@ -109,10 +109,10 @@ export function Navbar() {
               Imóveis
             </Link>
             <button
-              onClick={scrollToCategories}
+              onClick={scrollToAbout}
               className="text-[#4D4D4D] hover:text-[#1F4F91] font-medium py-2 text-left transition-colors"
             >
-              Categorias
+              Quem Somos
             </button>
             <Link
               href="https://wa.me/5511982724430?text=ol%C3%A1%20gostaria%20de%20conhecer%20algum%20im%C3%B3vel%20ideal%20para%20mim"

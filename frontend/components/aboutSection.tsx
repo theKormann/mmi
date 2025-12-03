@@ -4,7 +4,7 @@ export default function AboutSection() {
   const stats = [
     {
       icon: Building2,
-      value: "500+",
+      value: "10+",
       label: "Imóveis Disponíveis"
     },
     {
@@ -14,7 +14,7 @@ export default function AboutSection() {
     },
     {
       icon: Award,
-      value: "15+",
+      value: "25+",
       label: "Anos de Experiência"
     },
     {
@@ -25,7 +25,7 @@ export default function AboutSection() {
   ]
 
   return (
-    <section className="py-16 px-4 bg-gradient-to-br from-[#0C2D5A]/5 to-white">
+    <section id="about-section" className="py-16 px-4 bg-gradient-to-br from-[#0C2D5A]/5 to-white">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-[#0C2D5A] mb-4">
