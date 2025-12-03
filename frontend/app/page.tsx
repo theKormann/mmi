@@ -6,6 +6,7 @@ import { SetupTooltip } from "@/components/setup-tooltip"
 import ArcGalleryHero from "@/components/arc-gallery-hero"
 import Location from "@/components/location"
 import { HeroSearchForm } from "@/components/hero-search-form";
+import AboutSection from "../components/aboutSection";
 
 
 export default function Home() {
@@ -49,6 +50,7 @@ export default function Home() {
         </div>
       </section>
 
+      <AboutSection />
       <Location />
       <Newsletter />
       <Footer />
