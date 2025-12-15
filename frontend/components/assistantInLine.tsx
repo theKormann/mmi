@@ -2,9 +2,10 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 type ChatMsg = { role: 'user' | 'assistant'; content: string }
 
-// Ícones simples (pode substituir por lucide-react se tiver)
 const SparklesIcon = () => (
   <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -23,16 +24,29 @@ const AssistantInline: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
   
-  // Histórico inicial vazio para focar na "busca"
+  // Histórico do chat
   const [history, setHistory] = useState<ChatMsg[]>([])
   
   const endRef = useRef<HTMLDivElement>(null)
 
+  // Scroll automático para o fim
   useEffect(() => {
     if (history.length > 0) {
       endRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [history, loading])
+
+  // --- LÓGICA DE IDENTIFICAÇÃO (CRUCIAL PARA O BACKEND) ---
+  const getVisitorId = () => {
+    if (typeof window === 'undefined') return ''
+    let id = localStorage.getItem('mmi_visitor_id')
+    if (!id) {
+      // Gera um ID simples se não existir
+      id = Math.random().toString(36).substring(2) + Date.now().toString(36)
+      localStorage.setItem('mmi_visitor_id', id)
+    }
+    return id
+  }
 
   const suggestions = [
     '🏢 Apê 3 quartos no Centro',
@@ -42,11 +56,8 @@ const AssistantInline: React.FC = () => {
   ]
 
   const handleSuggestion = (text: string) => {
-    // Remove emojis para o input real, se quiser
     const cleanText = text.substring(2).trim() 
     setInput(cleanText)
-    // Opcional: auto-enviar ao clicar
-    // send(cleanText) 
   }
 
   const send = async (overrideInput?: string) => {
@@ -56,27 +67,47 @@ const AssistantInline: React.FC = () => {
     setHasStarted(true)
     const userMsg: ChatMsg = { role: 'user', content: textToSend.trim() }
     
-    setHistory((h) => [...h, userMsg])
+    // Atualiza a UI imediatamente (Optimistic UI)
+    const newHistory = [...history, userMsg]
+    setHistory(newHistory)
     setInput('')
     setLoading(true)
 
     try {
-      // Simulação da API
-      const res = await fetch('/api/chat', {
+      const visitorId = getVisitorId()
+
+      // --- CONEXÃO COM O BACKEND SPRING BOOT ---
+      const res = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [...history, userMsg] }),
+        body: JSON.stringify({
+            message: userMsg.content,  // Mensagem atual
+            visitorId: visitorId,      // ID para rastrear o lead
+            history: newHistory.slice(-6) // Envia contexto (últimas 6 msgs)
+        }),
       })
-      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        throw new Error(`Erro na API: ${res.status}`)
+      }
+
+      const data = await res.json()
       
       const assistant: ChatMsg = {
         role: 'assistant',
-        content: data?.response || 'Entendi! Para refinar sua busca: qual é a faixa de valor ideal e tem preferência por bairro?'
+        content: data.response || 'Desculpe, não entendi. Pode repetir?'
       }
       
       setHistory((h) => [...h, assistant])
-    } catch {
-      setHistory((h) => [...h, { role: 'assistant', content: 'Ops, tive um problema de conexão. Tente novamente?' }])
+
+      // Verifica se o backend sinalizou a criação de um lead (opcional)
+      if (data.leadCreated) {
+        console.log("Lead capturado com sucesso!")
+      }
+
+    } catch (error) {
+      console.error("Erro ao conectar com backend:", error)
+      setHistory((h) => [...h, { role: 'assistant', content: 'Ops, estou sem conexão com o servidor no momento. Verifique se o backend está rodando.' }])
     } finally {
       setLoading(false)
     }
@@ -121,7 +152,7 @@ const AssistantInline: React.FC = () => {
         </div>
       )}
 
-      {/* Input Principal - Destaque */}
+      {/* Input Principal */}
       <div className="relative group z-20">
         <div className={`absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-1000 ${hasStarted ? 'hidden' : ''}`}></div>
         <div className="relative flex items-center bg-white rounded-full shadow-lg border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
@@ -153,7 +184,7 @@ const AssistantInline: React.FC = () => {
         </div>
       </div>
 
-      {/* Sugestões (Chips) - Só aparecem antes de começar */}
+      {/* Sugestões (Chips) */}
       {!hasStarted && (
         <div className="mt-6 text-center animate-fade-in-up">
           <p className="text-sm text-gray-500 mb-3 font-medium">Ou tente um destes:</p>
