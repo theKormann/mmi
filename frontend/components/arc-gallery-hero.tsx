@@ -49,20 +49,19 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, [radiusLg, radiusMd, radiusSm, cardSizeLg, cardSizeMd, cardSizeSm]);
 
-  const count = Math.max(images.length, 1);
-  const step = (endAngle - startAngle) / count;
+  const count = Math.max(images.length, 2);
+  const step = (endAngle - startAngle) / (count - 1);
 
   return (
-    // Fundo principal alterado para Branco (#FFFFFF)
     <section className={`relative overflow-hidden bg-[#FFFFFF] min-h-screen flex items-center justify-center ${className}`}>
       <div className="relative w-full h-full flex items-center justify-center">
         <div className="absolute">
           {images.map((src, i) => {
             const angle = startAngle + step * i;
-            const angleRad = (angle * Math.PI) / 110;
+            const angleRad = (angle * Math.PI) / 180;
 
             const x = Math.cos(angleRad) * dimensions.radius;
-            const y = Math.sin(angleRad) * dimensions.radius;
+            const y = -Math.sin(angleRad) * dimensions.radius; // Negativo para inverter o eixo Y
 
             return (
               <div
@@ -72,8 +71,8 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
                   width: dimensions.cardSize,
                   height: dimensions.cardSize,
                   left: `calc(50% + ${x}px)`,
-                  bottom: `${y}px`,
-                  transform: `translate(-50%, 50%)`,
+                  top: `calc(50% - ${y}px)`, // Mudado de bottom para top
+                  transform: `translate(-50%, -50%)`,
                   animationDelay: `${i * 100}ms`,
                   animationFillMode: 'forwards',
                   zIndex: count - i,

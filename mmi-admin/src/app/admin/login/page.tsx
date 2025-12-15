@@ -139,7 +139,6 @@ export default function AdminLoginPage() {
           </form>
         </div>
 
-        {/* Rodapé */}
         <div className="px-8 py-4 bg-gray-50 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-400">
             &copy; {new Date().getFullYear()} MMI Gestão Imobiliária. Todos os direitos reservados.
