@@ -4,8 +4,15 @@ import React, { useEffect, useRef, useState } from 'react'
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string }
 
+// Ícones simples (pode substituir por lucide-react se tiver)
+const SparklesIcon = () => (
+  <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+  </svg>
+)
+
 const SendIcon = () => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="22" y1="2" x2="11" y2="13"></line>
     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
   </svg>
@@ -14,54 +21,62 @@ const SendIcon = () => (
 const AssistantInline: React.FC = () => {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [history, setHistory] = useState<ChatMsg[]>([
-    { role: 'assistant', content: 'Como você imagina o imóvel ideal? (ex.: apartamento 3 quartos na Mooca até 600 mil)' },
-  ])
+  const [hasStarted, setHasStarted] = useState(false)
+  
+  // Histórico inicial vazio para focar na "busca"
+  const [history, setHistory] = useState<ChatMsg[]>([])
+  
   const endRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), [history, loading])
+  useEffect(() => {
+    if (history.length > 0) {
+      endRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [history, loading])
 
-  const chips = [
-    'Comprar', 'Alugar', 'Casa', 'Apartamento', '3 quartos', '2 vagas', 'Centro', 'Até R$ 500 mil'
+  const suggestions = [
+    '🏢 Apê 3 quartos no Centro',
+    '🏡 Casa com piscina até 800k',
+    '🔑 Aluguel perto do metrô',
+    '💼 Sala comercial na Paulista'
   ]
 
-  const addChip = (text: string) => {
-    setInput((prev) => (prev ? `${prev} ${text}` : text))
+  const handleSuggestion = (text: string) => {
+    // Remove emojis para o input real, se quiser
+    const cleanText = text.substring(2).trim() 
+    setInput(cleanText)
+    // Opcional: auto-enviar ao clicar
+    // send(cleanText) 
   }
 
-  const send = async () => {
-    if (!input.trim() || loading) return
-    const userMsg: ChatMsg = { role: 'user', content: input.trim() }
+  const send = async (overrideInput?: string) => {
+    const textToSend = overrideInput || input
+    if (!textToSend.trim() || loading) return
+
+    setHasStarted(true)
+    const userMsg: ChatMsg = { role: 'user', content: textToSend.trim() }
+    
     setHistory((h) => [...h, userMsg])
     setInput('')
     setLoading(true)
+
     try {
+      // Simulação da API
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [...history, userMsg] }),
       })
       const data = await res.json().catch(() => ({}))
+      
       const assistant: ChatMsg = {
         role: 'assistant',
-        content:
-          data?.response ||
-          'Entendi! Prefere alguma região específica? E qual faixa de preço você tem em mente?',
+        content: data?.response || 'Entendi! Para refinar sua busca: qual é a faixa de valor ideal e tem preferência por bairro?'
       }
+      
       setHistory((h) => [...h, assistant])
-      if (data?.shouldCreateLead) {
-        // opcional: dispara extração em background
-        fetch('/api/lead/extract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: [...history, userMsg, assistant] }),
-        }).catch(() => {})
-      }
     } catch {
-      setHistory((h) => [
-        ...h,
-        { role: 'assistant', content: 'Tive um problema ao responder agora. Pode tentar novamente?' },
-      ])
+      setHistory((h) => [...h, { role: 'assistant', content: 'Ops, tive um problema de conexão. Tente novamente?' }])
     } finally {
       setLoading(false)
     }
@@ -74,68 +89,87 @@ const AssistantInline: React.FC = () => {
     }
   }
 
-  // Mostra só os últimos 3 balões para manter leve
-  const lastMessages = history.slice(-3)
-
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      {/* Balão curto do assistente */}
-      <div className="flex items-start gap-2 mb-3">
-        <div className="mt-1 h-2 w-2 rounded-full bg-emerald-500"></div>
-        <div className="rounded-2xl rounded-tl-none bg-white border border-gray-200 px-4 py-3 shadow-sm text-sm text-gray-800">
-          {lastMessages[0]?.content}
-        </div>
-      </div>
-
-      {/* Chips de sugestão */}
-      <div className="flex gap-2 flex-wrap mb-4">
-        {chips.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => addChip(c)}
-            className="px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs border border-gray-200 transition"
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {/* Input compacto */}
-      <div className="relative">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="Descreva seu imóvel ideal..."
-          className="w-full rounded-full bg-white/80 backdrop-blur border border-gray-200 px-4 pr-12 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1F4F91]/30"
-          aria-label="Descrever imóvel"
-        />
-        <button
-          onClick={send}
-          disabled={!input.trim() || loading}
-          className="absolute right-1 top-1 h-9 w-9 rounded-full bg-[#0C2D5A] text-white grid place-items-center hover:bg-[#1F4F91] disabled:opacity-50"
-          aria-label="Enviar"
-        >
-          {loading ? (
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.25" />
-              <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" fill="none" />
-            </svg>
-          ) : (
-            <SendIcon />
+    <div className={`w-full max-w-2xl mx-auto transition-all duration-500 ease-in-out ${hasStarted ? 'bg-white/90 shadow-2xl rounded-3xl p-6 border border-gray-100' : ''}`}>
+      
+      {/* Área do Chat (só aparece após início) */}
+      {hasStarted && (
+        <div className="mb-6 space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+          {history.map((msg, idx) => (
+            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div 
+                className={`max-w-[85%] px-5 py-3 rounded-2xl text-sm leading-relaxed ${
+                  msg.role === 'user' 
+                    ? 'bg-[#0C2D5A] text-white rounded-br-none' 
+                    : 'bg-gray-100 text-gray-800 rounded-bl-none border border-gray-200'
+                }`}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-50 px-4 py-3 rounded-2xl rounded-bl-none border border-gray-100 flex items-center gap-2">
+                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+              </div>
+            </div>
           )}
-        </button>
-      </div>
-
-      {/* Última resposta curta */}
-      {lastMessages.length > 1 && (
-        <div className="mt-3 text-sm text-gray-600">
-          <span className="font-medium text-gray-700">IA:</span> {lastMessages[lastMessages.length - 1].content}
+          <div ref={endRef} />
         </div>
       )}
 
-      <div ref={endRef} />
+      {/* Input Principal - Destaque */}
+      <div className="relative group z-20">
+        <div className={`absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-1000 ${hasStarted ? 'hidden' : ''}`}></div>
+        <div className="relative flex items-center bg-white rounded-full shadow-lg border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+          
+          <div className="pl-5 text-gray-400">
+             <SparklesIcon />
+          </div>
+
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder={hasStarted ? "Responda à IA..." : "Descreva seu imóvel dos sonhos..."}
+            className="w-full bg-transparent border-none px-4 py-4 text-base text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+            autoComplete="off"
+          />
+          
+          <button
+            onClick={() => send()}
+            disabled={!input.trim() || loading}
+            className="mr-2 p-2.5 rounded-full bg-[#0C2D5A] text-white hover:bg-[#1F4F91] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+                <SendIcon />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Sugestões (Chips) - Só aparecem antes de começar */}
+      {!hasStarted && (
+        <div className="mt-6 text-center animate-fade-in-up">
+          <p className="text-sm text-gray-500 mb-3 font-medium">Ou tente um destes:</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                onClick={() => handleSuggestion(s)}
+                className="px-4 py-2 rounded-xl bg-white/60 backdrop-blur-sm border border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 text-gray-600 text-sm transition-all shadow-sm"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

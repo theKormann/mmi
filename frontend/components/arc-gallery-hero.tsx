@@ -20,16 +20,16 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
   images,
   startAngle = -110,
   endAngle = 110,
-  radiusLg = 420,
-  radiusMd = 340,
-  radiusSm = 240,
-  cardSizeLg = 116,
-  cardSizeMd = 96,
+  radiusLg = 450, // Aumentei um pouco para afastar do texto
+  radiusMd = 360,
+  radiusSm = 260,
+  cardSizeLg = 120,
+  cardSizeMd = 100,
   cardSizeSm = 80,
   className = '',
 }) => {
-  // Responsividade do arco
   const [dimensions, setDimensions] = useState({ radius: radiusLg, card: cardSizeLg })
+
   useEffect(() => {
     const onResize = () => {
       const w = window.innerWidth
@@ -44,86 +44,84 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
 
   const count = Math.max(images.length, 2)
   const step = (endAngle - startAngle) / (count - 1)
-  const arcHeight = Math.round(dimensions.radius * 1.05)
+  // Reduzi o padding top para o arco ficar mais "atrás" do conteúdo visualmente se necessário
+  const arcHeight = Math.round(dimensions.radius * 0.95) 
 
   return (
-    <section
-      className={`relative bg-background overflow-hidden ${className}`}
-      style={{ paddingTop: arcHeight + 32 }} // espaço para o arco
-    >
-      {/* Arco centralizado global (não em coluna) */}
-      <div
-        className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-full max-w-6xl"
-        style={{ height: arcHeight }}
+    <section className={`relative bg-slate-50 overflow-hidden min-h-[700px] flex flex-col justify-center ${className}`}>
+      
+      {/* ARCO DE FUNDO 
+         Adicionei 'opacity-60' e 'blur-[1px]' para ele não competir com o texto.
+         Adicionei um mask-image linear para fazer os cards sumirem suavemente na parte inferior.
+      */}
+      <div 
+        className="absolute inset-x-0 top-0 pointer-events-none select-none z-0"
+        style={{ 
+          height: arcHeight + 100,
+          maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)', 
+          WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)'
+        }}
         aria-hidden
       >
-        <div className="absolute left-1/2 bottom-0 -translate-x-1/2">
-          {images.map((src, i) => {
-            const angle = startAngle + step * i
-            const rad = (angle * Math.PI) / 180
-            const x = Math.cos(rad) * dimensions.radius
-            const y = Math.sin(rad) * dimensions.radius // usamos bottom + y
-            return (
-              <div
-                key={i}
-                className="absolute opacity-0 animate-fade-in-up"
-                style={{
-                  width: dimensions.card,
-                  height: dimensions.card,
-                  left: `calc(50% + ${x}px)`,
-                  bottom: `${y}px`,
-                  transform: 'translate(-50%, 50%)',
-                  animationDelay: `${i * 80}ms`,
-                  animationFillMode: 'forwards',
-                  zIndex: count - i,
-                }}
-              >
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 w-full max-w-6xl h-full opacity-60 grayscale-[30%] blur-[0.5px]">
+            <div className="absolute left-1/2 bottom-0 -translate-x-1/2">
+            {images.map((src, i) => {
+                const angle = startAngle + step * i
+                const rad = (angle * Math.PI) / 180
+                const x = Math.cos(rad) * dimensions.radius
+                const y = Math.sin(rad) * dimensions.radius
+                return (
                 <div
-                  className="w-full h-full rounded-2xl overflow-hidden shadow-xl ring-1 ring-border bg-card transition-transform duration-200 hover:scale-105"
-                  style={{ transform: `rotate(${angle / 5}deg)` }}
+                    key={i}
+                    className="absolute animate-fade-in-up"
+                    style={{
+                    width: dimensions.card,
+                    height: dimensions.card,
+                    left: `calc(50% + ${x}px)`,
+                    bottom: `${y}px`,
+                    transform: 'translate(-50%, 50%)',
+                    animationDelay: `${i * 100}ms`,
+                    animationFillMode: 'forwards',
+                    }}
                 >
-                  <img src={src} alt="" className="w-full h-full object-cover" draggable={false} />
+                    <div
+                    className="w-full h-full rounded-xl overflow-hidden shadow-lg bg-white rotate-0 opacity-0 animate-scale-in"
+                    style={{ 
+                        transform: `rotate(${angle + 90}deg)`, // Ajuste na rotação para ficarem "olhando" pro centro
+                        animationDelay: `${i * 100}ms`,
+                        animationFillMode: 'forwards'
+                    }} 
+                    >
+                    <img src={src} alt="" className="w-full h-full object-cover opacity-90" draggable={false} />
+                    </div>
                 </div>
-              </div>
-            )
-          })}
+                )
+            })}
+            </div>
         </div>
       </div>
 
-      {/* Conteúdo central */}
-      <div className="relative">
-        <div className="container mx-auto px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground">
-              Encontre o imóvel dos seus sonhos
+      {/* Conteúdo Central - Z-INDEX maior para ficar sobre o arco */}
+      <div className="relative z-10 container mx-auto px-4 mt-20 sm:mt-0">
+        <div className="max-w-3xl mx-auto text-center space-y-8">
+          
+          <div className="space-y-4">
+            <span className="inline-block py-1 px-3 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold tracking-wide uppercase">
+              Nova Era Imobiliária
+            </span>
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
+              Seu novo imóvel começa com uma <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">conversa</span>.
             </h1>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Diga o que você procura e a nossa IA te guia até as melhores opções.
+            <p className="text-lg text-slate-600 max-w-xl mx-auto">
+              Esqueça os filtros complicados. Nossa Inteligência Artificial encontra as melhores oportunidades no mercado baseada no que você realmente quer.
             </p>
-
-            {/* Assistente inline mais leve */}
-            <div className="mt-8">
-              <AssistantInline />
-            </div>
-
-            {/* Ações rápidas */}
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <a
-                href="/properties"
-                className="inline-flex items-center justify-center rounded-full px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-lg"
-              >
-                Ver imóveis
-              </a>
-              <a
-                href="https://wa.me/5511982724430?text=Olá!%20Quero%20ajuda%20para%20encontrar%20um%20imóvel"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-full px-6 py-3 border border-border hover:bg-accent hover:text-accent-foreground transition"
-              >
-                Falar com um corretor
-              </a>
-            </div>
           </div>
+
+          {/* O Chat agora é o único foco de ação */}
+          <div className="pt-4 pb-12">
+            <AssistantInline />
+          </div>
+
         </div>
       </div>
     </section>
