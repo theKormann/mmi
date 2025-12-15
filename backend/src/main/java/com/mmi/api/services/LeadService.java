@@ -26,6 +26,39 @@ public class LeadService {
         return leadRepository.findAllWithProperty();
     }
 
+    // Adicione no LeadService
+
+    @Transactional
+    public void createOrUpdateLeadFromAi(LeadDTO dto) {
+        // Tenta encontrar um lead existente por telefone ou email ou visitorId recente
+        // Aqui simplifiquei buscando apenas por telefone se existir, ou visitorId
+
+        Lead existingLead = null;
+
+        if (dto.getTelefone() != null) {
+            existingLead = leadRepository.findByTelefone(dto.getTelefone()).orElse(null);
+        }
+
+        if (existingLead == null && dto.getEmail() != null) {
+            existingLead = leadRepository.findByEmail(dto.getEmail()).orElse(null);
+        }
+
+        if (existingLead != null) {
+            // Atualiza informações
+            if (dto.getNome() != null) existingLead.setNome(dto.getNome());
+            if (dto.getInteresse() != null) existingLead.setInteresse(dto.getInteresse());
+            // Se a IA detectou um imóvel específico agora, atualiza
+            if (dto.getPropertyId() != null) {
+                Property p = propertyRepository.findById(dto.getPropertyId()).orElse(null);
+                existingLead.setProperty(p);
+            }
+            leadRepository.save(existingLead);
+        } else {
+            // Cria novo
+            createLead(dto);
+        }
+    }
+
     @Transactional
     public Lead createLead(LeadDTO dto) {
         Lead newLead = new Lead();
