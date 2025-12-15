@@ -54,69 +54,75 @@ const ArcGalleryHero: React.FC<ArcGalleryHeroProps> = ({
 
   return (
     <section className={`relative overflow-hidden bg-[#FFFFFF] min-h-screen flex items-center justify-center ${className}`}>
-      <div className="relative w-full h-full flex items-center justify-center">
-        <div className="absolute">
-          {images.map((src, i) => {
-            const angle = startAngle + step * i;
-            const angleRad = (angle * Math.PI) / 180;
-
-            const x = Math.cos(angleRad) * dimensions.radius;
-            const y = -Math.sin(angleRad) * dimensions.radius; // Negativo para inverter o eixo Y
-
-            return (
-              <div
-                key={i}
-                className="absolute opacity-100 animate-fade-in-up"
-                style={{
-                  width: dimensions.cardSize,
-                  height: dimensions.cardSize,
-                  left: `calc(50% + ${x}px)`,
-                  top: `calc(50% - ${y}px)`, // Mudado de bottom para top
-                  transform: `translate(-50%, -50%)`,
-                  animationDelay: `${i * 100}ms`,
-                  animationFillMode: 'forwards',
-                  zIndex: count - i,
-                }}
+      <div className="container mx-auto px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Coluna de texto */}
+          <div className="text-center lg:text-left max-w-2xl mx-auto lg:mx-0 z-20">
+            <h1 className="text-2xl sm:text-4xl lg:text-6xl font-bold tracking-tight text-[#000000]">
+              Encontre o imóvel dos seus sonhos
+            </h1>
+            <p className="mt-4 text-lg text-[#4D4D4D]">
+              Imóveis, apartamentos, casas e terrenos à venda e para alugar.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4">
+              <a href="/properties" target="_blank" rel="noopener noreferrer">
+                <button className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#0C2D5A] text-[#FFFFFF] hover:bg-[#1F4F91] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  visualizar imóveis
+                </button>
+              </a>
+              <a
+                href="https://wa.me/5511982724430?text=ol%C3%A1%20gostaria%20de%20conhecer%20algum%20im%C3%B3vel%20ideal%20para%20mim"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto inline-block text-center px-6 py-3 rounded-full border border-[#1F4F91] text-[#1F4F91] hover:bg-[#1F4F91] hover:text-[#FFFFFF] transition-all duration-200"
               >
-                <div
-                  className="rounded-2xl shadow-xl overflow-hidden ring-1 ring-[#1F4F91] bg-white transition-transform hover:scale-105 w-full h-full"
-                  style={{ transform: `rotate(${angle + 90}deg)` }}
-                >
-                  <img
-                    src={src}
-                    alt=""
-                    className="block w-full h-full object-cover"
-                    draggable={false}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                Contato
+              </a>
+            </div>
+          </div>
 
-      <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-        <div className="text-center max-w-2xl px-6 pointer-events-auto">
-          <h1 className="text-2xl sm:text-4xl lg:text-6xl font-bold tracking-tight text-[#000000]">
-            Encontre o imóvel dos seus sonhos
-          </h1>
-          <p className="mt-4 text-lg text-[#4D4D4D]">
-            Imóveis, apartamentos, casas e terrenos à venda e para alugar.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="/properties" target="_blank" rel="noopener noreferrer">
-              <button className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#0C2D5A] text-[#FFFFFF] hover:bg-[#1F4F91] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                visualizar imóveis
-              </button>
-            </a>
-            <a
-              href="https://wa.me/5511982724430?text=ol%C3%A1%20gostaria%20de%20conhecer%20algum%20im%C3%B3vel%20ideal%20para%20mim"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full sm:w-auto inline-block text-center px-6 py-3 rounded-full border border-[#1F4F91] text-[#1F4F91] hover:bg-[#1F4F91] hover:text-[#FFFFFF] transition-all duration-200"
-            >
-              Contato
-            </a>
+          {/* Coluna do arco de imagens */}
+          <div className="relative hidden lg:block" style={{ height: `${dimensions.radius * 1.5}px` }}>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative" style={{ width: `${dimensions.radius * 2}px`, height: `${dimensions.radius}px` }}>
+                {images.map((src, i) => {
+                  const angle = startAngle + step * i;
+                  const angleRad = (angle * Math.PI) / 180;
+
+                  const x = Math.cos(angleRad) * dimensions.radius;
+                  const y = -Math.sin(angleRad) * dimensions.radius;
+
+                  return (
+                    <div
+                      key={i}
+                      className="absolute opacity-0 animate-fade-in-up"
+                      style={{
+                        width: dimensions.cardSize,
+                        height: dimensions.cardSize,
+                        left: `calc(50% + ${x}px)`,
+                        top: `calc(50% - ${y}px)`,
+                        transform: `translate(-50%, -50%)`,
+                        animationDelay: `${i * 100}ms`,
+                        animationFillMode: 'forwards',
+                        zIndex: count - i,
+                      }}
+                    >
+                      <div
+                        className="rounded-2xl shadow-xl overflow-hidden ring-1 ring-[#1F4F91] bg-white transition-transform hover:scale-105 w-full h-full"
+                        style={{ transform: `rotate(${angle + 90}deg)` }}
+                      >
+                        <img
+                          src={src}
+                          alt=""
+                          className="block w-full h-full object-cover"
+                          draggable={false}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
