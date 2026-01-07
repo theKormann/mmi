@@ -60,6 +60,7 @@ public class AiService {
 
     private String formatPropertiesForAi(List<Property> properties) {
         return properties.stream()
+                .limit(15)
                 .map(p -> new PropertyAiContextDTO(
                         p.getId(),
                         p.getType().toString(),
@@ -149,7 +150,7 @@ public class AiService {
         messages.add(objectMapper.createObjectNode().put("role", "user").put("content", currentMsg));
 
         Map<String, Object> body = new HashMap<>();
-        body.put("model", "gpt-3.5-turbo"); // Ou gpt-4o-mini (mais barato e rápido)
+        body.put("model", "gpt-4o-mini"); // Ou gpt-4o-mini (mais barato e rápido)
         body.put("messages", messages);
         body.put("temperature", 0.7);
 
