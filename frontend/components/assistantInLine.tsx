@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState } from 'react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -27,14 +27,7 @@ const AssistantInline: React.FC = () => {
   // Histórico do chat
   const [history, setHistory] = useState<ChatMsg[]>([])
   
-  const endRef = useRef<HTMLDivElement>(null)
-
-  // Scroll automático para o fim
-  useEffect(() => {
-    if (history.length > 0) {
-      endRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [history, loading])
+  // REMOVI O useRef (endRef) e o useEffect de scroll aqui
 
   // --- LÓGICA DE IDENTIFICAÇÃO (CRUCIAL PARA O BACKEND) ---
   const getVisitorId = () => {
@@ -148,7 +141,7 @@ const AssistantInline: React.FC = () => {
               </div>
             </div>
           )}
-          <div ref={endRef} />
+          {/* Removi a div de referência (endRef) */}
         </div>
       )}
 
