@@ -66,4 +66,17 @@ public class ContractController {
         }
     }
 
+    @PutMapping("/{uuid}")
+    public ResponseEntity<Contract> updateContract(@PathVariable UUID uuid, @RequestBody CreateContractRequest request) {
+        // Reaproveitando o CreateContractRequest apenas para pegar o Title, ou crie um DTO simples
+        Contract updated = contractService.updateContract(uuid, request.getTitle());
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{uuid}")
+    public ResponseEntity<Void> deleteContract(@PathVariable UUID uuid) {
+        contractService.deleteContract(uuid);
+        return ResponseEntity.noContent().build();
+    }
+
 }

@@ -8,6 +8,8 @@ import {
   deleteClause,
   createClause,
   updateClause,
+  deleteContract, // <--- Novo import
+  updateContract, // <--- Novo import
   Clause,
 } from '../../../../../services/api'
 import {
@@ -33,8 +35,14 @@ import axios from 'axios'
 
 // --- COMPONENTS ---
 
-const ContractNameModal = ({ isOpen, onClose, onConfirm, loading }: any) => {
-  const [title, setTitle] = useState('')
+// Atualizado para aceitar initialValue (para edição)
+const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue = '' }: any) => {
+  const [title, setTitle] = useState(initialValue)
+
+  // Reseta ou define o valor inicial sempre que o modal abre
+  useEffect(() => {
+    if (isOpen) setTitle(initialValue)
+  }, [isOpen, initialValue])
 
   if (!isOpen) return null
 
@@ -42,13 +50,17 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading }: any) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-gray-900">Novo Contrato</h3>
+          <h3 className="text-xl font-bold text-gray-900">
+            {initialValue ? 'Renomear Contrato' : 'Novo Contrato'}
+          </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
           </button>
         </div>
         <p className="text-sm text-gray-500 mb-5">
-          Defina um nome para identificar este documento facilmente.
+          {initialValue 
+            ? 'Atualize o nome deste documento.' 
+            : 'Defina um nome para identificar este documento facilmente.'}
         </p>
         
         <div className="space-y-4">
@@ -79,7 +91,7 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading }: any) => {
             className="px-5 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md shadow-blue-200 transition-all"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
-            Gerar Documento
+            {initialValue ? 'Salvar Alterações' : 'Gerar Documento'}
           </button>
         </div>
       </div>
@@ -111,10 +123,15 @@ export default function ContractsPage() {
   const [error, setError] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
+  // Estados para Cláusulas
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isNameModalOpen, setIsNameModalOpen] = useState(false)
-  
   const [clauseToEdit, setClauseToEdit] = useState<Clause | null>(null)
+  
+  // Estados para Contratos (Criação e Edição)
+  const [isNameModalOpen, setIsNameModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false) // <--- Novo
+  const [contractToEdit, setContractToEdit] = useState<Contract | null>(null) // <--- Novo
+
   const [selectedClauses, setSelectedClauses] = useState<number[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   
@@ -141,38 +158,109 @@ export default function ContractsPage() {
     loadAllData()
   }, [])
 
-  // ... (Handlers mantidos iguais: handleDelete, handleSaveClause, etc) ...
-  // Apenas copiando a lógica para não quebrar, foco no visual abaixo
+  // --- HANDLERS DE CLÁUSULAS ---
   const handleOpenCreateModal = () => { setClauseToEdit(null); setIsModalOpen(true) }
   const handleOpenEditModal = (e: any, clause: Clause) => { e.stopPropagation(); setClauseToEdit(clause); setIsModalOpen(true) }
+  
   const handleDelete = async (e: any, id: number) => {
-    e.stopPropagation(); if (!window.confirm('Excluir?')) return
-    try { await deleteClause(id); setClauses(prev => prev.filter(c => c.id !== id)); setSelectedClauses(prev => prev.filter(cid => cid !== id)) } catch { alert('Erro ao excluir') }
+    e.stopPropagation(); 
+    if (!window.confirm('Excluir esta cláusula?')) return
+    try { 
+      await deleteClause(id); 
+      setClauses(prev => prev.filter(c => c.id !== id)); 
+      setSelectedClauses(prev => prev.filter(cid => cid !== id)) 
+    } catch { 
+      alert('Erro ao excluir cláusula') 
+    }
   }
+
   const handleSaveClause = async (formData: ClauseFormData) => {
     try {
-      let res: AxiosResponse<any, any, {}>; if (clauseToEdit) { res = await updateClause(clauseToEdit.id!, formData); setClauses(prev => prev.map(c => c.id === clauseToEdit.id ? res.data : c)) } else { res = await createClause(formData); setClauses(prev => [res.data, ...prev]) }
+      let res: AxiosResponse<any, any, {}>; 
+      if (clauseToEdit) { 
+        res = await updateClause(clauseToEdit.id!, formData); 
+        setClauses(prev => prev.map(c => c.id === clauseToEdit.id ? res.data : c)) 
+      } else { 
+        res = await createClause(formData); 
+        setClauses(prev => [res.data, ...prev]) 
+      }
       setIsModalOpen(false); setClauseToEdit(null)
-    } catch { alert('Erro ao salvar') }
+    } catch { 
+      alert('Erro ao salvar cláusula') 
+    }
   }
+
   const toggleSelectClause = (id: number) => { setSelectedClauses(prev => prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]) }
+
+  // --- HANDLERS DE CONTRATOS ---
+
   const handleInitiateGeneration = () => { if (selectedClauses.length === 0) return; setIsNameModalOpen(true) }
+  
   const handleConfirmGeneration = async (contractTitle: string) => {
+    // Garante a ordem da seleção
     const selected = selectedClauses
       .map(id => clauses.find(c => c.id === id))
       .filter((c): c is Clause => c !== undefined) 
+      
     try {
       setIsGenerating(true)
       const res = await axios.post(`${API_URL}/api/contracts`, { title: contractTitle, clauses: selected })
       router.push(`/admin/erp/contracts/signatures/${res.data}`)
     } catch { 
-      alert('Erro ao gerar'); 
+      alert('Erro ao gerar contrato'); 
       setIsGenerating(false); 
       setIsNameModalOpen(false) 
     }
   }
 
-  if (loading) return <div className="flex h-screen items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
+  // Novo: Deletar Contrato
+  const handleDeleteContract = async (e: React.MouseEvent, uuid: string) => {
+    e.preventDefault(); 
+    e.stopPropagation();
+    
+    if (!window.confirm('Tem certeza que deseja excluir este contrato? Esta ação é irreversível.')) return;
+
+    try {
+      await deleteContract(uuid);
+      setContracts(prev => prev.filter(c => c.uuid !== uuid));
+    } catch (error) {
+      alert('Erro ao excluir contrato.');
+      console.error(error);
+    }
+  };
+
+  // Novo: Abrir Modal de Edição
+  const handleOpenEditContract = (e: React.MouseEvent, contract: Contract) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContractToEdit(contract);
+    setIsEditModalOpen(true);
+  };
+
+  // Novo: Salvar Edição (Renomear)
+  const handleSaveContractTitle = async (newTitle: string) => {
+    if (!contractToEdit) return;
+    
+    try {
+      // Usamos um estado de loading local ou reaproveitamos o isGenerating para travar o botão
+      setIsGenerating(true); 
+      await updateContract(contractToEdit.uuid, newTitle);
+      
+      // Atualiza a lista localmente
+      setContracts(prev => prev.map(c => 
+        c.uuid === contractToEdit.uuid ? { ...c, title: newTitle } : c
+      ));
+      
+      setIsEditModalOpen(false);
+      setContractToEdit(null);
+    } catch (error) {
+      alert('Erro ao renomear contrato.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  if (loading && contracts.length === 0) return <div className="flex h-screen items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
   if (error) return <div className="p-10 text-center text-red-600">{error}</div>
 
   return (
@@ -224,7 +312,6 @@ export default function ContractsPage() {
               <p className="text-gray-500 text-sm mt-1">Adicione cláusulas padrão para agilizar seus contratos.</p>
             </div>
           ) : (
-            // AQUI ESTÁ A MUDANÇA: Grid responsivo forçado
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {clauses.map((clause) => {
                 const id = clause.id ?? -1
@@ -297,7 +384,6 @@ export default function ContractsPage() {
               <p className="text-gray-500 text-sm">Nenhum contrato gerado ainda.</p>
             </div>
           ) : (
-            // GRID DE CONTRATOS REFEITA
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {contracts.map((contract) => {
                 const signatureCount = contract.signatures.length
@@ -308,7 +394,7 @@ export default function ContractsPage() {
                     key={contract.uuid}
                     className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col"
                   >
-                    {/* Header do Card (Status e Icone) */}
+                    {/* Header do Card */}
                     <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
                         <div className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
                             <File className="w-5 h-5 text-gray-400" />
@@ -356,7 +442,24 @@ export default function ContractsPage() {
                     </div>
 
                     <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-                        <span className="text-xs text-gray-400">Criado recentemente</span>
+                        {/* Botões de Ação (Editar e Deletar) */}
+                        <div className="flex gap-2">
+                          <button 
+                              onClick={(e) => handleOpenEditContract(e, contract)}
+                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Renomear Contrato"
+                          >
+                              <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                              onClick={(e) => handleDeleteContract(e, contract.uuid)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Excluir Contrato"
+                          >
+                              <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
                         <Link
                             href={`/admin/erp/contracts/signatures/${contract.uuid}`}
                             className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 group-hover:gap-2 transition-all"
@@ -401,7 +504,7 @@ export default function ContractsPage() {
         </div>
       </div>
 
-      {/* Modais */}
+      {/* Modal para Editar/Criar Cláusula */}
       <ClauseModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -409,11 +512,22 @@ export default function ContractsPage() {
         clauseToEdit={clauseToEdit}
       />
 
+      {/* Modal para CRIAR novo contrato */}
       <ContractNameModal 
         isOpen={isNameModalOpen}
         onClose={() => setIsNameModalOpen(false)}
         onConfirm={handleConfirmGeneration}
         loading={isGenerating}
+        initialValue=""
+      />
+
+      {/* Modal para EDITAR (Renomear) contrato */}
+      <ContractNameModal 
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onConfirm={handleSaveContractTitle}
+        loading={isGenerating}
+        initialValue={contractToEdit?.title || ''}
       />
     </div>
   )

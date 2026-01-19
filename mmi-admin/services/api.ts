@@ -126,6 +126,14 @@ const clausesApi = axios.create({
   baseURL: `${API_BASE_URL}/api`,
 });
 
+export const deleteContract = (uuid: string) => {
+  return clausesApi.delete(`/contracts/${uuid}`);
+};
+
+export const updateContract = (uuid: string, title: string) => {
+  return clausesApi.put(`/contracts/${uuid}`, { title });
+};
+
 export const getClauses = () => clausesApi.get<Clause[]>("/clauses");
 
 export const createClause = (data: Omit<Clause, "id">) =>
