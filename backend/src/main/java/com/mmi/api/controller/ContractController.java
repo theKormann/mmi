@@ -31,9 +31,17 @@ public class ContractController {
     }
 
     @PostMapping
-    public ResponseEntity<UUID> createContract(@RequestBody CreateContractRequest request) throws IOException, IOException {
-        Contract contract = contractService.createContractForSigning(request);
-        return ResponseEntity.ok(contract.getUuid());
+    public ResponseEntity<?> createContract(@RequestBody CreateContractRequest request) {
+        try {
+            // Tenta criar o contrato
+            Contract contract = contractService.createContractForSigning(request);
+            return ResponseEntity.ok(contract.getUuid());
+        } catch (Exception e) {
+            // IMPRIME O ERRO REAL NO CONSOLE
+            e.printStackTrace();
+            // Retorna o erro para quem chamou a API
+            return ResponseEntity.internalServerError().body("Erro ao criar contrato: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{uuid}")
