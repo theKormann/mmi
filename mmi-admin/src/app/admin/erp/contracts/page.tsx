@@ -158,12 +158,18 @@ export default function ContractsPage() {
   const toggleSelectClause = (id: number) => { setSelectedClauses(prev => prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]) }
   const handleInitiateGeneration = () => { if (selectedClauses.length === 0) return; setIsNameModalOpen(true) }
   const handleConfirmGeneration = async (contractTitle: string) => {
-    const selected = clauses.filter(c => c.id != null && selectedClauses.includes(c.id))
+    const selected = selectedClauses
+      .map(id => clauses.find(c => c.id === id))
+      .filter((c): c is Clause => c !== undefined) 
     try {
       setIsGenerating(true)
       const res = await axios.post(`${API_URL}/api/contracts`, { title: contractTitle, clauses: selected })
       router.push(`/admin/erp/contracts/signatures/${res.data}`)
-    } catch { alert('Erro ao gerar'); setIsGenerating(false); setIsNameModalOpen(false) }
+    } catch { 
+      alert('Erro ao gerar'); 
+      setIsGenerating(false); 
+      setIsNameModalOpen(false) 
+    }
   }
 
   if (loading) return <div className="flex h-screen items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
