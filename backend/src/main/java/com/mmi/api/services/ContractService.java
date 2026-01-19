@@ -70,7 +70,6 @@ public class ContractService {
 
     @Transactional
     public Contract createContractForSigning(CreateContractRequest request) throws IOException {
-        // CORREÇÃO 1: Passa o título do request para o gerador de PDF
         byte[] pdfBytes = generateContractPDF(request.getTitle(), request.getClauses());
 
         Contract contract = new Contract();
@@ -104,13 +103,12 @@ public class ContractService {
         return newSignature;
     }
 
-    // --- LÓGICA DE GERAÇÃO DE PDF ---
+    // --- LÓGICA DE GERAÇÃO DE PDF OTIMIZADA ---
 
-    // CORREÇÃO 1: Assinatura do método alterada para receber o título
     public byte[] generateContractPDF(String contractTitle, List<ClauseDTO> clauses) throws IOException {
         try (PDDocument document = new PDDocument()) {
 
-            PDImageXObject bgStandard = loadImage(document, "images/papel_timbrado.png");
+            PDImageXObject bgStandard = loadImage(document, "images/papel_timbrado.jpg");
 
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
@@ -123,18 +121,16 @@ public class ContractService {
             float pageHeight = page.getMediaBox().getHeight();
             float effectiveWidth = pageWidth - 2 * margin;
 
-            // CORREÇÃO 2: Aumentado de 50 para 120 para não cobrir o rodapé do papel timbrado
+            // Rodapé protegido para não cobrir informações do papel timbrado
             float footerHeight = 120;
 
             float yStart = pageHeight - 100;
             float yPosition = yStart;
             float lineSpacing = 18;
 
-            // Título do Contrato (Dinâmico)
+            // 1. Título do Contrato
             content.beginText();
             content.setFont(FONT_BOLD, 18);
-
-            // Usa o título recebido ou um fallback
             String titleText = (contractTitle != null && !contractTitle.trim().isEmpty())
                     ? contractTitle.toUpperCase()
                     : "CONTRATO DE PRESTAÇÃO DE SERVIÇOS";
@@ -146,7 +142,7 @@ public class ContractService {
             yPosition -= 40;
 
             for (ClauseDTO clause : clauses) {
-                // Título da Cláusula
+                // 2. Título da Cláusula
                 content.beginText();
                 content.setFont(FONT_BOLD, 14);
                 content.newLineAtOffset(margin, yPosition);
@@ -154,26 +150,17 @@ public class ContractService {
                 content.endText();
                 yPosition -= 20;
 
-                // Processamento do Conteúdo
+                // 3. Processamento do Conteúdo (PARÁGRAFO POR PARÁGRAFO)
                 String rawContent = clause.getContent() != null ? clause.getContent() : "";
-                String safeContent = rawContent.replaceAll("[\\n\\r\\t]", " ");
 
-                List<Word> words = parseContentToWords(safeContent);
-                List<Word> currentLine = new ArrayList<>();
-                float currentLineWidth = 0;
+                // Divide por quebras de linha explicitamente para respeitar parágrafos
+                String[] paragraphs = rawContent.split("\\r?\\n");
 
-                for (Word word : words) {
-                    float wordWidth = word.getWidth();
-                    float spaceWidth = (word.isBold ? FONT_BOLD : FONT_NORMAL).getStringWidth(" ") / 1000 * FONT_SIZE;
-
-                    if (currentLineWidth + wordWidth > effectiveWidth) {
-                        printLine(content, currentLine, margin, yPosition, effectiveWidth, true);
-
-                        currentLine.clear();
-                        currentLineWidth = 0;
+                for (String paragraph : paragraphs) {
+                    // Se o parágrafo for vazio (Enter duplo), apenas pula linha
+                    if (paragraph.trim().isEmpty()) {
                         yPosition -= lineSpacing;
-
-                        // Verifica quebra de página respeitando o footerHeight maior
+                        // Verifica quebra de página se necessário
                         if (yPosition < footerHeight) {
                             content.close();
                             page = new PDPage(PDRectangle.A4);
@@ -182,16 +169,62 @@ public class ContractService {
                             content = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true);
                             yPosition = yStart;
                         }
+                        continue;
                     }
 
-                    currentLine.add(word);
-                    currentLineWidth += wordWidth + spaceWidth;
+                    // Remove caracteres inválidos APENAS dentro do parágrafo (mantém o fluxo)
+                    String safeParagraph = paragraph.replaceAll("[\\t\\x0B\\f\\r]", " ");
+
+                    List<Word> words = parseContentToWords(safeParagraph);
+                    List<Word> currentLine = new ArrayList<>();
+                    float currentLineWidth = 0;
+
+                    for (Word word : words) {
+                        float wordWidth = word.getWidth();
+                        float spaceWidth = (word.isBold ? FONT_BOLD : FONT_NORMAL).getStringWidth(" ") / 1000 * FONT_SIZE;
+
+                        if (currentLineWidth + wordWidth > effectiveWidth) {
+                            // Linha cheia -> Imprime JUSTIFICADO
+                            printLine(content, currentLine, margin, yPosition, effectiveWidth, true);
+
+                            currentLine.clear();
+                            currentLineWidth = 0;
+                            yPosition -= lineSpacing;
+
+                            // Verifica quebra de página
+                            if (yPosition < footerHeight) {
+                                content.close();
+                                page = new PDPage(PDRectangle.A4);
+                                document.addPage(page);
+                                drawBackground(document, page, bgStandard);
+                                content = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true);
+                                yPosition = yStart;
+                            }
+                        }
+
+                        currentLine.add(word);
+                        currentLineWidth += wordWidth + spaceWidth;
+                    }
+
+                    // Fim do Parágrafo: A última linha deve ser ALINHADA À ESQUERDA (false)
+                    if (!currentLine.isEmpty()) {
+                        printLine(content, currentLine, margin, yPosition, effectiveWidth, false);
+                        yPosition -= lineSpacing;
+                    }
+
+                    // Verifica quebra de página após parágrafo
+                    if (yPosition < footerHeight) {
+                        content.close();
+                        page = new PDPage(PDRectangle.A4);
+                        document.addPage(page);
+                        drawBackground(document, page, bgStandard);
+                        content = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true);
+                        yPosition = yStart;
+                    }
                 }
 
-                if (!currentLine.isEmpty()) {
-                    printLine(content, currentLine, margin, yPosition, effectiveWidth, false);
-                    yPosition -= lineSpacing * 2;
-                }
+                // Espaço extra entre cláusulas diferentes
+                yPosition -= lineSpacing;
             }
             content.close();
 
@@ -213,6 +246,7 @@ public class ContractService {
         for (Word w : words) totalWordWidth += w.getWidth();
 
         float extraSpace = 0;
+        // Só justifica se tiver mais de uma palavra e a flag estiver true
         if (justify && words.size() > 1) {
             float totalStandardSpacesWidth = 0;
             for (int i = 0; i < words.size() - 1; i++) {
@@ -258,7 +292,6 @@ public class ContractService {
         return words;
     }
 
-    // CORREÇÃO 2: Ajuste da posição do número da página para respeitar o novo footerHeight
     private void addPageNumbers(PDDocument document, float margin, float footerHeight) throws IOException {
         int totalPages = document.getNumberOfPages();
         for (int i = 0; i < totalPages; i++) {
@@ -268,9 +301,9 @@ public class ContractService {
                 stream.beginText();
                 stream.setFont(FONT_NORMAL, 10);
                 float textWidth = FONT_NORMAL.getStringWidth(pageText) / 1000 * 10;
-                // Posiciona o número da página um pouco acima do rodapé protegido (ex: footerHeight - 20) ou numa posição fixa segura
-                float safeY = footerHeight - 50; // Se o footerHeight é 120 (muito alto), o número fica em 70
-                if (safeY < 30) safeY = 30; // Garante um mínimo
+
+                float safeY = footerHeight - 50;
+                if (safeY < 30) safeY = 30;
 
                 stream.newLineAtOffset(currentPage.getMediaBox().getWidth() - margin - textWidth, safeY);
                 stream.showText(pageText);
