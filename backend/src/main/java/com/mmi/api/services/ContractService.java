@@ -110,7 +110,7 @@ public class ContractService {
     public byte[] generateContractPDF(String contractTitle, List<ClauseDTO> clauses) throws IOException {
         try (PDDocument document = new PDDocument()) {
 
-            PDImageXObject bgStandard = loadImage(document, "images/papel_timbrado.jpg");
+            PDImageXObject bgStandard = loadImage(document, "images/papel_timbrado.png");
 
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
