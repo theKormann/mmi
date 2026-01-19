@@ -176,7 +176,16 @@ public class ContractService {
                 yPosition -= 20;
 
                 content.setFont(PDType1Font.TIMES_ROMAN, 12);
-                String[] words = clause.getContent().split(" ");
+
+                // --- CORREÇÃO APLICADA AQUI ---
+                // Remove quebras de linha e caracteres de controle que o PDFBox não suporta em fontes padrão
+                String rawContent = clause.getContent() != null ? clause.getContent() : "";
+                String safeContent = rawContent.replaceAll("[\\n\\r\\t]", " ");
+
+                // Divide por qualquer sequência de espaços em branco
+                String[] words = safeContent.split("\\s+");
+                // ------------------------------
+
                 StringBuilder line = new StringBuilder();
                 float maxWidth = pageWidth - 2 * margin;
 
