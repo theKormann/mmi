@@ -1,4 +1,5 @@
 package com.mmi.api.services;
+
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -6,41 +7,49 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 @Service
 public class WatermarkService {
 
-    public byte[] addWatermark(MultipartFile originalFile, float opacity) throws IOException {
+    // Agora recebemos o OutputStream para onde a imagem final será enviada
+    public void addWatermark(MultipartFile originalFile, OutputStream outputStream, float opacity) throws IOException {
 
-        InputStream fileStream = new ByteArrayInputStream(originalFile.getBytes());
-        BufferedImage mainImage = ImageIO.read(fileStream);
+        // OTIMIZAÇÃO 1: Usar getInputStream() direto, sem carregar getBytes() na memória
+        try (InputStream fileStream = originalFile.getInputStream();
+             InputStream watermarkStream = new ClassPathResource("mmi-watermark.png").getInputStream()) {
 
+            BufferedImage mainImage = ImageIO.read(fileStream);
 
-        InputStream watermarkStream = new ClassPathResource("mmi-watermark.png").getInputStream();
-        BufferedImage watermarkImage = ImageIO.read(watermarkStream);
+            // Verificação de segurança caso o arquivo não seja uma imagem válida
+            if (mainImage == null) {
+                throw new IOException("O arquivo enviado não é uma imagem válida ou suportada.");
+            }
 
-        Graphics2D g = (Graphics2D) mainImage.getGraphics();
+            BufferedImage watermarkImage = ImageIO.read(watermarkStream);
 
-        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity));
+            Graphics2D g = (Graphics2D) mainImage.getGraphics();
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity));
 
-        int mainWidth = mainImage.getWidth();
-        int mainHeight = mainImage.getHeight();
-        int waterWidth = watermarkImage.getWidth();
-        int waterHeight = watermarkImage.getHeight();
+            int mainWidth = mainImage.getWidth();
+            int mainHeight = mainImage.getHeight();
+            int waterWidth = watermarkImage.getWidth();
+            int waterHeight = watermarkImage.getHeight();
 
-        int x = (mainWidth - waterWidth) / 2;
-        int y = (mainHeight - waterHeight) / 2;
+            // Centralizar
+            int x = (mainWidth - waterWidth) / 2;
+            int y = (mainHeight - waterHeight) / 2;
 
-        g.drawImage(watermarkImage, x, y, null);
-        g.dispose();
+            g.drawImage(watermarkImage, x, y, null);
+            g.dispose();
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(mainImage, "png", baos);
+            // OTIMIZAÇÃO 2: Escrever direto na saída (response), sem criar array de bytes intermediário
+            ImageIO.write(mainImage, "png", outputStream);
 
-        return baos.toByteArray();
+            // OTIMIZAÇÃO 3: Ajudar o Garbage Collector liberando a imagem pesada
+            mainImage.flush();
+        }
     }
 }
