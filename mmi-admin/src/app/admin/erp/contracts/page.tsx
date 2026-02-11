@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import ClauseModal from '../../../../components/ClauseModal'
 import { AxiosResponse } from 'axios'
+import { UploadCloud } from 'lucide-react'
 import axios from 'axios'
 
 // --- COMPONENTS ---
@@ -38,11 +39,18 @@ import axios from 'axios'
 // Atualizado para aceitar initialValue (para edição)
 const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue = '' }: any) => {
   const [title, setTitle] = useState(initialValue)
+  const [files, setFiles] = useState<File[]>([])
 
   // Reseta ou define o valor inicial sempre que o modal abre
   useEffect(() => {
     if (isOpen) setTitle(initialValue)
   }, [isOpen, initialValue])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files))
+    }
+  }
 
   if (!isOpen) return null
 
@@ -86,7 +94,7 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue =
             Cancelar
           </button>
           <button
-            onClick={() => onConfirm(title)}
+            onClick={() => onConfirm(title, files)}
             disabled={!title.trim() || loading}
             className="px-5 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md shadow-blue-200 transition-all"
           >
@@ -95,11 +103,32 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue =
           </button>
         </div>
       </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1 uppercase tracking-wider">
+            Imagens do Imóvel (Opcional)
+        </label>
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors relative">
+            <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <div className="flex flex-col items-center justify-center text-gray-500">
+                <UploadCloud className="w-8 h-8 mb-2 text-gray-400" />
+                <span className="text-sm font-medium">
+                    {files.length > 0 
+                        ? `${files.length} arquivo(s) selecionado(s)` 
+                        : 'Clique ou arraste fotos aqui'}
+                </span>
+            </div>
+        </div>
+      </div>
     </div>
   )
 }
 
-// --- MAIN PAGE ---
 
 type ClauseFormData = Omit<Clause, 'id' | 'createdAt'>
 const API_URL = process.env.NEXT_PUBLIC_API_URL
@@ -196,7 +225,7 @@ export default function ContractsPage() {
 
   const handleInitiateGeneration = () => { if (selectedClauses.length === 0) return; setIsNameModalOpen(true) }
   
-  const handleConfirmGeneration = async (contractTitle: string) => {
+  const handleConfirmGeneration = async (contractTitle: string, files: File[]) => {
     // Garante a ordem da seleção
     const selected = selectedClauses
       .map(id => clauses.find(c => c.id === id))
@@ -204,10 +233,25 @@ export default function ContractsPage() {
       
     try {
       setIsGenerating(true)
-      const res = await axios.post(`${API_URL}/api/contracts`, { title: contractTitle, clauses: selected })
+      const formData = new FormData();
+      
+      const contractData = JSON.stringify({ 
+          title: contractTitle, 
+          clauses: selected 
+      });
+      formData.append('data', contractData);
+      
+      files.forEach((file) => {
+          formData.append('files', file);
+      });
+
+      const res = await axios.post(`${API_URL}/api/contracts`, formData)
+      
       router.push(`/admin/erp/contracts/signatures/${res.data}`)
-    } catch { 
+    } catch (err) { 
+      console.error(err);
       alert('Erro ao gerar contrato'); 
+    } finally {
       setIsGenerating(false); 
       setIsNameModalOpen(false) 
     }

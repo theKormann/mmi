@@ -49,4 +49,9 @@ public class Contract {
         }
         return null;
     }
+
+    @ElementCollection
+    @CollectionTable(name = "contract_images", joinColumns = @JoinColumn(name = "contract_id"))
+    @Column(name = "image_url")
+    private List<String> imageUrls = new ArrayList<>();
 }

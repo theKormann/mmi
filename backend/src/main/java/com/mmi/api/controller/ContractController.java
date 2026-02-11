@@ -1,16 +1,17 @@
 package com.mmi.api.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mmi.api.services.ContractService;
 import com.mmi.models.Contract;
 import com.mmi.models.Signature;
-import com.mmi.models.dto.ClauseDTO;
 import com.mmi.models.dto.CreateContractRequest;
 import com.mmi.models.dto.SignatureDTO;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,9 +20,11 @@ import java.util.UUID;
 public class ContractController {
 
     private final ContractService contractService;
+    private final ObjectMapper objectMapper; // Instância do Jackson para converter String em Objeto
 
-    public ContractController(ContractService contractService) {
+    public ContractController(ContractService contractService, ObjectMapper objectMapper) {
         this.contractService = contractService;
+        this.objectMapper = objectMapper;
     }
 
 
@@ -30,16 +33,22 @@ public class ContractController {
         return contractService.findAllContracts();
     }
 
-    @PostMapping
-    public ResponseEntity<?> createContract(@RequestBody CreateContractRequest request) {
+    // ALTERADO: Agora aceita Multipart Form Data (JSON + Arquivos)
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createContract(
+            @RequestPart("data") String contractDataJson, // Recebe o JSON como String
+            @RequestPart(value = "files", required = false) List<MultipartFile> files // Recebe a lista de arquivos
+    ) {
         try {
-            // Tenta criar o contrato
-            Contract contract = contractService.createContractForSigning(request);
+            // Converte manualmente a String JSON para o objeto CreateContractRequest
+            CreateContractRequest request = objectMapper.readValue(contractDataJson, CreateContractRequest.class);
+
+            // Chama o serviço passando os arquivos
+            Contract contract = contractService.createContractWithImages(request, files);
+
             return ResponseEntity.ok(contract.getUuid());
         } catch (Exception e) {
-            // IMPRIME O ERRO REAL NO CONSOLE
             e.printStackTrace();
-            // Retorna o erro para quem chamou a API
             return ResponseEntity.internalServerError().body("Erro ao criar contrato: " + e.getMessage());
         }
     }
@@ -52,8 +61,8 @@ public class ContractController {
 
     @PostMapping("/{uuid}/signatures")
     public ResponseEntity<?> addSignature(
-                                           @PathVariable UUID uuid,
-                                           @RequestBody SignatureDTO signatureDTO) {
+            @PathVariable UUID uuid,
+            @RequestBody SignatureDTO signatureDTO) {
 
         try {
             Signature newSignature = contractService.addSignerToContract(uuid, signatureDTO);
@@ -68,7 +77,6 @@ public class ContractController {
 
     @PutMapping("/{uuid}")
     public ResponseEntity<Contract> updateContract(@PathVariable UUID uuid, @RequestBody CreateContractRequest request) {
-        // Reaproveitando o CreateContractRequest apenas para pegar o Title, ou crie um DTO simples
         Contract updated = contractService.updateContract(uuid, request.getTitle());
         return ResponseEntity.ok(updated);
     }

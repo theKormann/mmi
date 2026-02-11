@@ -8,7 +8,6 @@ import com.mmi.models.Signature;
 import com.mmi.models.dto.ClauseDTO;
 import com.mmi.models.dto.CreateContractRequest;
 import com.mmi.models.dto.SignatureDTO;
-import jakarta.persistence.EntityNotFoundException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -19,6 +18,7 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -35,6 +35,7 @@ public class ContractService {
     private final ClauseRepository clauseRepository;
     private final ContractRepository contractRepository;
     private final ClicksignService clicksignService;
+    private final CloudinaryService cloudinaryService; // <--- Novo serviço injetado
 
     // Definição das fontes
     private static final PDFont FONT_NORMAL = PDType1Font.TIMES_ROMAN;
@@ -43,10 +44,12 @@ public class ContractService {
 
     public ContractService(ClauseRepository clauseRepository,
                            ContractRepository contractRepository,
-                           ClicksignService clicksignService) {
+                           ClicksignService clicksignService,
+                           CloudinaryService cloudinaryService) {
         this.clauseRepository = clauseRepository;
         this.contractRepository = contractRepository;
         this.clicksignService = clicksignService;
+        this.cloudinaryService = cloudinaryService;
     }
 
     public List<Clause> findAllClauses() { return clauseRepository.findAll(); }
@@ -68,15 +71,40 @@ public class ContractService {
         contractRepository.delete(contract);
     }
 
+    // Método antigo mantido para compatibilidade, se necessário
     @Transactional
     public Contract createContractForSigning(CreateContractRequest request) throws IOException {
-        byte[] pdfBytes = generateContractPDF(request.getTitle(), request.getClauses());
+        return createContractWithImages(request, null);
+    }
 
+    // --- NOVO MÉTODO PRINCIPAL DE CRIAÇÃO ---
+    @Transactional
+    public Contract createContractWithImages(CreateContractRequest request, List<MultipartFile> files) throws IOException {
         Contract contract = new Contract();
         contract.setTitle(request.getTitle() != null && !request.getTitle().isEmpty() ? request.getTitle() : "Contrato Sem Título");
+
+        // 1. Upload das imagens para o Cloudinary (se houver) e salvar URLs
+        if (files != null && !files.isEmpty()) {
+            List<String> uploadedUrls = new ArrayList<>();
+            // Define uma pasta única para o contrato
+            String folder = "mmi/contracts/" + contract.getUuid();
+
+            for (MultipartFile file : files) {
+                String url = cloudinaryService.uploadFile(file, folder);
+                uploadedUrls.add(url);
+            }
+            // OBS: Certifique-se de adicionar o campo 'imageUrls' na entidade Contract
+            contract.setImageUrls(uploadedUrls);
+        }
+
+        // 2. Gerar PDF (incluindo as imagens anexadas no final)
+        byte[] pdfBytes = generateContractPDF(request.getTitle(), request.getClauses(), files);
         contract.setPdfData(pdfBytes);
+
+        // Salva primeiro para garantir ID/UUID se necessário
         contract = contractRepository.save(contract);
 
+        // 3. Enviar para Clicksign
         String safeFileName = contract.getTitle().replaceAll("[^a-zA-Z0-9.-]", "_") + "_" + contract.getUuid() + ".pdf";
         String clicksignDocKey = clicksignService.uploadDocument(pdfBytes, safeFileName);
         contract.setExternalKey(clicksignDocKey);
@@ -105,7 +133,12 @@ public class ContractService {
 
     // --- LÓGICA DE GERAÇÃO DE PDF OTIMIZADA ---
 
+    // Sobrecarga para manter compatibilidade interna
     public byte[] generateContractPDF(String contractTitle, List<ClauseDTO> clauses) throws IOException {
+        return generateContractPDF(contractTitle, clauses, null);
+    }
+
+    public byte[] generateContractPDF(String contractTitle, List<ClauseDTO> clauses, List<MultipartFile> attachedImages) throws IOException {
         try (PDDocument document = new PDDocument()) {
 
             PDImageXObject bgStandard = loadImage(document, "images/papel_timbrado.jpg");
@@ -226,7 +259,58 @@ public class ContractService {
                 // Espaço extra entre cláusulas diferentes
                 yPosition -= lineSpacing;
             }
-            content.close();
+            content.close(); // Fecha o stream de texto das cláusulas
+
+            // --- 4. ANEXAR IMAGENS AO FINAL DO PDF ---
+            if (attachedImages != null && !attachedImages.isEmpty()) {
+                for (MultipartFile imgFile : attachedImages) {
+                    try {
+                        PDImageXObject pdImage = PDImageXObject.createFromByteArray(document, imgFile.getBytes(), imgFile.getOriginalFilename());
+
+                        // Nova página para a imagem
+                        PDPage imgPage = new PDPage(PDRectangle.A4);
+                        document.addPage(imgPage);
+
+                        // Desenha background se quiser manter o papel timbrado nas fotos também
+                        drawBackground(document, imgPage, bgStandard);
+
+                        try (PDPageContentStream imgContent = new PDPageContentStream(document, imgPage, PDPageContentStream.AppendMode.APPEND, true, true)) {
+
+                            // Título "Anexo"
+                            imgContent.beginText();
+                            imgContent.setFont(FONT_BOLD, 14);
+                            imgContent.newLineAtOffset(margin, pageHeight - 100);
+                            imgContent.showText("ANEXO - IMAGEM DO IMÓVEL");
+                            imgContent.endText();
+
+                            // Calcular dimensões para caber na página (respeitando margens)
+                            float maxWidth = effectiveWidth;
+                            float maxHeight = pageHeight - 200; // Margem topo + título + rodapé
+
+                            float imgW = pdImage.getWidth();
+                            float imgH = pdImage.getHeight();
+
+                            // Lógica de Scale "contain"
+                            float scale = 1.0f;
+                            if (imgW > maxWidth || imgH > maxHeight) {
+                                scale = Math.min(maxWidth / imgW, maxHeight / imgH);
+                            }
+
+                            float drawW = imgW * scale;
+                            float drawH = imgH * scale;
+
+                            // Centralizar imagem
+                            float drawX = margin + (effectiveWidth - drawW) / 2;
+                            float drawY = (pageHeight - drawH) / 2;
+
+                            imgContent.drawImage(pdImage, drawX, drawY, drawW, drawH);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Erro ao anexar imagem ao PDF: " + e.getMessage());
+                        // Continua para a próxima imagem mesmo se uma falhar
+                    }
+                }
+            }
 
             addPageNumbers(document, margin, footerHeight);
 
