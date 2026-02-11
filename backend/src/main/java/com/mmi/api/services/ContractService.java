@@ -35,7 +35,7 @@ public class ContractService {
     private final ClauseRepository clauseRepository;
     private final ContractRepository contractRepository;
     private final ClicksignService clicksignService;
-    private final CloudinaryService cloudinaryService; // <--- Novo serviço injetado
+    private final CloudinaryService cloudinaryService;
 
     // Definição das fontes
     private static final PDFont FONT_NORMAL = PDType1Font.TIMES_ROMAN;
@@ -71,13 +71,13 @@ public class ContractService {
         contractRepository.delete(contract);
     }
 
-    // Método antigo mantido para compatibilidade, se necessário
+    // Mantido para compatibilidade, se necessário
     @Transactional
     public Contract createContractForSigning(CreateContractRequest request) throws IOException {
         return createContractWithImages(request, null);
     }
 
-    // --- NOVO MÉTODO PRINCIPAL DE CRIAÇÃO ---
+    // --- NOVO MÉTODO PRINCIPAL DE CRIAÇÃO COM IMAGENS ---
     @Transactional
     public Contract createContractWithImages(CreateContractRequest request, List<MultipartFile> files) throws IOException {
         Contract contract = new Contract();
@@ -93,7 +93,6 @@ public class ContractService {
                 String url = cloudinaryService.uploadFile(file, folder);
                 uploadedUrls.add(url);
             }
-            // OBS: Certifique-se de adicionar o campo 'imageUrls' na entidade Contract
             contract.setImageUrls(uploadedUrls);
         }
 
@@ -101,7 +100,6 @@ public class ContractService {
         byte[] pdfBytes = generateContractPDF(request.getTitle(), request.getClauses(), files);
         contract.setPdfData(pdfBytes);
 
-        // Salva primeiro para garantir ID/UUID se necessário
         contract = contractRepository.save(contract);
 
         // 3. Enviar para Clicksign
@@ -261,55 +259,83 @@ public class ContractService {
             }
             content.close(); // Fecha o stream de texto das cláusulas
 
-            // --- 4. ANEXAR IMAGENS AO FINAL DO PDF ---
+            // --- 4. ANEXAR IMAGENS COMPACTAS (2 por página) ---
             if (attachedImages != null && !attachedImages.isEmpty()) {
-                for (MultipartFile imgFile : attachedImages) {
+                PDPage imgPage = null;
+                PDPageContentStream imgContent = null;
+
+                // Dimensões úteis para layout
+                float safeTop = pageHeight - 100;
+                float safeBottom = 100;
+                float availableHeightTotal = safeTop - safeBottom;
+                float gap = 20; // Espaço entre as duas fotos
+                float maxSlotHeight = (availableHeightTotal - gap) / 2;
+
+                for (int i = 0; i < attachedImages.size(); i++) {
+                    MultipartFile imgFile = attachedImages.get(i);
                     try {
                         PDImageXObject pdImage = PDImageXObject.createFromByteArray(document, imgFile.getBytes(), imgFile.getOriginalFilename());
 
-                        // Nova página para a imagem
-                        PDPage imgPage = new PDPage(PDRectangle.A4);
-                        document.addPage(imgPage);
+                        // Se o índice for par (0, 2, 4...), cria uma nova página e abre o stream
+                        if (i % 2 == 0) {
+                            if (imgContent != null) imgContent.close();
 
-                        // Desenha background se quiser manter o papel timbrado nas fotos também
-                        drawBackground(document, imgPage, bgStandard);
+                            imgPage = new PDPage(PDRectangle.A4);
+                            document.addPage(imgPage);
 
-                        try (PDPageContentStream imgContent = new PDPageContentStream(document, imgPage, PDPageContentStream.AppendMode.APPEND, true, true)) {
+                            // Mantém o papel timbrado de fundo
+                            drawBackground(document, imgPage, bgStandard);
 
-                            // Título "Anexo"
-                            imgContent.beginText();
-                            imgContent.setFont(FONT_BOLD, 14);
-                            imgContent.newLineAtOffset(margin, pageHeight - 100);
-                            imgContent.showText("ANEXO - IMAGEM DO IMÓVEL");
-                            imgContent.endText();
+                            imgContent = new PDPageContentStream(document, imgPage, PDPageContentStream.AppendMode.APPEND, true, true);
+                        }
 
-                            // Calcular dimensões para caber na página (respeitando margens)
-                            float maxWidth = effectiveWidth;
-                            float maxHeight = pageHeight - 200; // Margem topo + título + rodapé
+                        // Define se é o slot superior ou inferior
+                        boolean isTopSlot = (i % 2 == 0);
 
-                            float imgW = pdImage.getWidth();
-                            float imgH = pdImage.getHeight();
+                        // Lógica de Redimensionamento (Contain)
+                        float imgW = pdImage.getWidth();
+                        float imgH = pdImage.getHeight();
+                        float scale = 1.0f;
 
-                            // Lógica de Scale "contain"
-                            float scale = 1.0f;
-                            if (imgW > maxWidth || imgH > maxHeight) {
-                                scale = Math.min(maxWidth / imgW, maxHeight / imgH);
-                            }
+                        // 1. Ajusta pela largura
+                        if (imgW > effectiveWidth) {
+                            scale = effectiveWidth / imgW;
+                        }
+                        // 2. Ajusta pela altura (limitada à metade da página)
+                        float scaledH = imgH * scale;
+                        if (scaledH > maxSlotHeight) {
+                            scale = scale * (maxSlotHeight / scaledH);
+                        }
 
-                            float drawW = imgW * scale;
-                            float drawH = imgH * scale;
+                        float drawW = imgW * scale;
+                        float drawH = imgH * scale;
 
-                            // Centralizar imagem
-                            float drawX = margin + (effectiveWidth - drawW) / 2;
-                            float drawY = (pageHeight - drawH) / 2;
+                        // Centralizar horizontalmente
+                        float drawX = margin + (effectiveWidth - drawW) / 2;
 
+                        // Calcular Y (Centralizar verticalmente no slot respectivo)
+                        float drawY;
+                        if (isTopSlot) {
+                            // Centro do slot superior
+                            float slotCenterY = safeTop - (maxSlotHeight / 2);
+                            drawY = slotCenterY - (drawH / 2);
+                        } else {
+                            // Centro do slot inferior
+                            float slotCenterY = safeBottom + (maxSlotHeight / 2);
+                            drawY = slotCenterY - (drawH / 2);
+                        }
+
+                        if (imgContent != null) {
                             imgContent.drawImage(pdImage, drawX, drawY, drawW, drawH);
                         }
+
                     } catch (Exception e) {
                         System.err.println("Erro ao anexar imagem ao PDF: " + e.getMessage());
                         // Continua para a próxima imagem mesmo se uma falhar
                     }
                 }
+                // Fecha o último content stream aberto
+                if (imgContent != null) imgContent.close();
             }
 
             addPageNumbers(document, margin, footerHeight);
