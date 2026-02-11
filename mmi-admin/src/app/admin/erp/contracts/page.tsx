@@ -41,24 +41,59 @@ import axios from 'axios'
 const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue = '' }: any) => {
   const [title, setTitle] = useState(initialValue)
   const [files, setFiles] = useState<File[]>([])
+  const [isDragging, setIsDragging] = useState(false) // Novo estado visual
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Reseta ou define o valor inicial sempre que o modal abre
   useEffect(() => {
     if (isOpen) {
       setTitle(initialValue)
-      setFiles([]) // Limpa arquivos ao abrir para evitar estados antigos
+      setFiles([])
+      setIsDragging(false)
     }
   }, [isOpen, initialValue])
 
+  // Função centralizada para adicionar arquivos e evitar duplicatas (opcional)
+  const addFiles = (newFiles: File[]) => {
+    // Filtra apenas imagens se desejar
+    const imageFiles = newFiles.filter(file => file.type.startsWith('image/'))
+    
+    if (imageFiles.length > 0) {
+      setFiles(prev => [...prev, ...imageFiles])
+    } else if (newFiles.length > 0) {
+      alert("Apenas arquivos de imagem são permitidos.")
+    }
+  }
+
+  // Handler para o Input tradicional (Clique)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      // ACUMULA arquivos ao invés de substituir, permitindo múltiplas seleções
-      setFiles(prev => [...prev, ...Array.from(e.target.files!)])
+      addFiles(Array.from(e.target.files))
     }
-    // Reseta o input para permitir selecionar o mesmo arquivo novamente se necessário
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+    // Reseta o input para permitir selecionar o mesmo arquivo novamente
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // --- Handlers de Drag and Drop ---
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      addFiles(Array.from(e.dataTransfer.files))
+      e.dataTransfer.clearData()
     }
   }
 
@@ -97,7 +132,7 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue =
           </button>
         </div>
 
-        {/* Body (Scrollable) */}
+        {/* Body */}
         <div className="p-6 overflow-y-auto custom-scrollbar">
           <div className="space-y-6">
             
@@ -116,7 +151,7 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue =
               />
             </div>
 
-            {/* Upload Area - Só mostra se for NOVO contrato (initialValue vazio) */}
+            {/* Upload Area */}
             {!initialValue && (
               <div>
                 <div className="flex justify-between items-center mb-2">
@@ -129,8 +164,17 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue =
                 </div>
                 
                 <div 
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className="group border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-blue-50 hover:border-blue-400 transition-all cursor-pointer relative"
+                  className={`
+                    group border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer relative
+                    ${isDragging 
+                      ? 'border-blue-500 bg-blue-50 scale-[1.02]' 
+                      : 'border-gray-300 hover:bg-gray-50 hover:border-blue-400'
+                    }
+                  `}
                 >
                   <input
                     ref={fileInputRef}
@@ -138,14 +182,18 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue =
                     multiple
                     accept="image/*"
                     onChange={handleFileChange}
-                    className="hidden"
+                    className="hidden" // Input oculto, acionado via ref
                   />
-                  <div className="flex flex-col items-center justify-center text-gray-500 group-hover:text-blue-600 transition-colors">
-                    <div className="p-3 bg-gray-100 rounded-full mb-3 group-hover:bg-blue-100 transition-colors">
-                      <UploadCloud className="w-6 h-6" />
+                  
+                  <div className="flex flex-col items-center justify-center text-gray-500 group-hover:text-blue-600 transition-colors pointer-events-none">
+                    <div className={`
+                      p-3 rounded-full mb-3 transition-colors
+                      ${isDragging ? 'bg-blue-200 text-blue-700' : 'bg-gray-100 group-hover:bg-blue-100'}
+                    `}>
+                      <UploadCloud className="w-8 h-8" />
                     </div>
                     <span className="text-sm font-medium">
-                      Clique para selecionar fotos
+                      {isDragging ? 'Solte as imagens aqui' : 'Clique para selecionar fotos'}
                     </span>
                     <span className="text-xs text-gray-400 mt-1">
                       ou arraste e solte aqui (JPG, PNG)
@@ -153,23 +201,22 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue =
                   </div>
                 </div>
 
-                {/* File List Visual */}
+                {/* File List */}
                 {files.length > 0 && (
-                  <div className="mt-4 space-y-2 max-h-48 overflow-y-auto pr-1">
+                  <div className="mt-4 space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
                     {files.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg group hover:border-blue-200 transition-all">
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg group hover:border-blue-200 transition-all animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="w-10 h-10 rounded-lg bg-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
-                             {/* Preview simples da imagem */}
+                          <div className="w-10 h-10 rounded-lg bg-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
                              <img 
                                 src={URL.createObjectURL(file)} 
                                 alt="preview" 
-                                className="w-full h-full object-cover opacity-80"
+                                className="w-full h-full object-cover"
                                 onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
                              />
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-medium text-gray-700 truncate block max-w-[200px]">
+                            <span className="text-sm font-medium text-gray-700 truncate block max-w-[200px]" title={file.name}>
                               {file.name}
                             </span>
                             <span className="text-xs text-gray-400">
@@ -178,7 +225,10 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue =
                           </div>
                         </div>
                         <button
-                          onClick={() => removeFile(index)}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Evita abrir o seletor de arquivos ao clicar em remover
+                            removeFile(index);
+                          }}
                           className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
                           title="Remover arquivo"
                         >
