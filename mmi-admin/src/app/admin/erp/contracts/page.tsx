@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -8,8 +8,8 @@ import {
   deleteClause,
   createClause,
   updateClause,
-  deleteContract, // <--- Novo import
-  updateContract, // <--- Novo import
+  deleteContract,
+  updateContract,
   Clause,
 } from '../../../../../services/api'
 import {
@@ -27,68 +27,177 @@ import {
   X,
   MoreHorizontal,
   Check,
-  File
+  File as FileIcon,
+  UploadCloud,
+  Image as ImageIcon
 } from 'lucide-react'
 import ClauseModal from '../../../../components/ClauseModal'
 import { AxiosResponse } from 'axios'
-import { UploadCloud } from 'lucide-react'
 import axios from 'axios'
 
 // --- COMPONENTS ---
 
-// Atualizado para aceitar initialValue (para edição)
+// Modal atualizado com melhor UI/UX para múltiplos uploads e validação
 const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue = '' }: any) => {
   const [title, setTitle] = useState(initialValue)
   const [files, setFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Reseta ou define o valor inicial sempre que o modal abre
   useEffect(() => {
-    if (isOpen) setTitle(initialValue)
+    if (isOpen) {
+      setTitle(initialValue)
+      setFiles([]) // Limpa arquivos ao abrir para evitar estados antigos
+    }
   }, [isOpen, initialValue])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles(Array.from(e.target.files))
+    if (e.target.files && e.target.files.length > 0) {
+      // ACUMULA arquivos ao invés de substituir, permitindo múltiplas seleções
+      setFiles(prev => [...prev, ...Array.from(e.target.files!)])
     }
+    // Reseta o input para permitir selecionar o mesmo arquivo novamente se necessário
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const removeFile = (indexToRemove: number) => {
+    setFiles(prev => prev.filter((_, index) => index !== indexToRemove))
+  }
+
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
   }
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-gray-900">
-            {initialValue ? 'Renomear Contrato' : 'Novo Contrato'}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-100">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">
+              {initialValue ? 'Renomear Contrato' : 'Novo Contrato'}
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">
+              {initialValue 
+                ? 'Atualize os dados deste documento.' 
+                : 'Defina os detalhes e anexos do documento.'}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-sm text-gray-500 mb-5">
-          {initialValue 
-            ? 'Atualize o nome deste documento.' 
-            : 'Defina um nome para identificar este documento facilmente.'}
-        </p>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1 uppercase tracking-wider">Título do Documento</label>
-            <input
-              autoFocus
-              type="text"
-              placeholder="Ex: Contrato de Locação - Unidade 101"
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+
+        {/* Body (Scrollable) */}
+        <div className="p-6 overflow-y-auto custom-scrollbar">
+          <div className="space-y-6">
+            
+            {/* Input de Título */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                1. Identificação
+              </label>
+              <input
+                autoFocus
+                type="text"
+                placeholder="Ex: Contrato de Locação - Unidade 101"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+
+            {/* Upload Area - Só mostra se for NOVO contrato (initialValue vazio) */}
+            {!initialValue && (
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    2. Imagens do Imóvel <span className="text-gray-400 font-normal normal-case">(Opcional)</span>
+                  </label>
+                  <span className="text-xs text-gray-400">
+                    {files.length} arquivo(s)
+                  </span>
+                </div>
+                
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="group border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-blue-50 hover:border-blue-400 transition-all cursor-pointer relative"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <div className="flex flex-col items-center justify-center text-gray-500 group-hover:text-blue-600 transition-colors">
+                    <div className="p-3 bg-gray-100 rounded-full mb-3 group-hover:bg-blue-100 transition-colors">
+                      <UploadCloud className="w-6 h-6" />
+                    </div>
+                    <span className="text-sm font-medium">
+                      Clique para selecionar fotos
+                    </span>
+                    <span className="text-xs text-gray-400 mt-1">
+                      ou arraste e solte aqui (JPG, PNG)
+                    </span>
+                  </div>
+                </div>
+
+                {/* File List Visual */}
+                {files.length > 0 && (
+                  <div className="mt-4 space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {files.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg group hover:border-blue-200 transition-all">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="w-10 h-10 rounded-lg bg-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
+                             {/* Preview simples da imagem */}
+                             <img 
+                                src={URL.createObjectURL(file)} 
+                                alt="preview" 
+                                className="w-full h-full object-cover opacity-80"
+                                onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+                             />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-medium text-gray-700 truncate block max-w-[200px]">
+                              {file.name}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {formatSize(file.size)}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                          title="Remover arquivo"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 mt-8">
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-white hover:text-gray-900 border border-transparent hover:border-gray-200 rounded-xl transition-all"
             disabled={loading}
           >
             Cancelar
@@ -96,33 +205,11 @@ const ContractNameModal = ({ isOpen, onClose, onConfirm, loading, initialValue =
           <button
             onClick={() => onConfirm(title, files)}
             disabled={!title.trim() || loading}
-            className="px-5 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md shadow-blue-200 transition-all"
+            className="px-6 py-2.5 text-sm font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all transform active:scale-95"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
             {initialValue ? 'Salvar Alterações' : 'Gerar Documento'}
           </button>
-        </div>
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1 uppercase tracking-wider">
-            Imagens do Imóvel (Opcional)
-        </label>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors relative">
-            <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <div className="flex flex-col items-center justify-center text-gray-500">
-                <UploadCloud className="w-8 h-8 mb-2 text-gray-400" />
-                <span className="text-sm font-medium">
-                    {files.length > 0 
-                        ? `${files.length} arquivo(s) selecionado(s)` 
-                        : 'Clique ou arraste fotos aqui'}
-                </span>
-            </div>
         </div>
       </div>
     </div>
@@ -158,8 +245,8 @@ export default function ContractsPage() {
   
   // Estados para Contratos (Criação e Edição)
   const [isNameModalOpen, setIsNameModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false) // <--- Novo
-  const [contractToEdit, setContractToEdit] = useState<Contract | null>(null) // <--- Novo
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false) 
+  const [contractToEdit, setContractToEdit] = useState<Contract | null>(null) 
 
   const [selectedClauses, setSelectedClauses] = useState<number[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
@@ -241,23 +328,26 @@ export default function ContractsPage() {
       });
       formData.append('data', contractData);
       
-      files.forEach((file) => {
-          formData.append('files', file);
-      });
+      // Adiciona todos os arquivos acumulados
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+            formData.append('files', file);
+        });
+      }
 
       const res = await axios.post(`${API_URL}/api/contracts`, formData)
       
       router.push(`/admin/erp/contracts/signatures/${res.data}`)
     } catch (err) { 
       console.error(err);
-      alert('Erro ao gerar contrato'); 
+      alert('Erro ao gerar contrato. Verifique o console ou o tamanho dos arquivos.'); 
     } finally {
       setIsGenerating(false); 
       setIsNameModalOpen(false) 
     }
   }
 
-  // Novo: Deletar Contrato
+  // Deletar Contrato
   const handleDeleteContract = async (e: React.MouseEvent, uuid: string) => {
     e.preventDefault(); 
     e.stopPropagation();
@@ -273,7 +363,7 @@ export default function ContractsPage() {
     }
   };
 
-  // Novo: Abrir Modal de Edição
+  // Abrir Modal de Edição
   const handleOpenEditContract = (e: React.MouseEvent, contract: Contract) => {
     e.preventDefault();
     e.stopPropagation();
@@ -281,12 +371,11 @@ export default function ContractsPage() {
     setIsEditModalOpen(true);
   };
 
-  // Novo: Salvar Edição (Renomear)
+  // Salvar Edição (Renomear)
   const handleSaveContractTitle = async (newTitle: string) => {
     if (!contractToEdit) return;
     
     try {
-      // Usamos um estado de loading local ou reaproveitamos o isGenerating para travar o botão
       setIsGenerating(true); 
       await updateContract(contractToEdit.uuid, newTitle);
       
@@ -388,7 +477,7 @@ export default function ContractsPage() {
                     
                     <div className="flex-grow">
                       <p className={`text-xs text-gray-600 leading-relaxed ${!isExpanded && 'line-clamp-4'}`}>
-                        {clause.content}
+                        {clause.content || <span className="italic text-gray-400">Sem conteúdo (apenas título)</span>}
                       </p>
                     </div>
 
@@ -441,7 +530,7 @@ export default function ContractsPage() {
                     {/* Header do Card */}
                     <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
                         <div className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
-                            <File className="w-5 h-5 text-gray-400" />
+                            <FileIcon className="w-5 h-5 text-gray-400" />
                         </div>
                         {isSigned ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-green-50 text-green-700 border border-green-100">

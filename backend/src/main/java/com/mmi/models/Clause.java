@@ -15,11 +15,11 @@ public class Clause {
     @Column(nullable = false)
     private String title;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String content;
-
     public Clause() {
     }
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
 
     public Clause(String title, String content) {
         this.title = title;
