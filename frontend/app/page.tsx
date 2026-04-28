@@ -16,7 +16,18 @@ export default function Home() {
 
   return (
     <main className="min-h-screen">
-    
+      <ArcGalleryHero
+        images={[/* ...suas imagens... */]}
+        startAngle={-110}
+        endAngle={110}
+        radiusLg={480}
+        radiusMd={360}
+        radiusSm={260}
+        cardSizeLg={120}
+        cardSizeMd={100}
+        cardSizeSm={80}
+        className="pt-16 pb-16 md:pt-20 md:pb-20 lg:pt-24 lg:pb-24"
+      />
       <FeaturedProducts />
       
       <section className="mt-16 mb-16 text-center px-4">
