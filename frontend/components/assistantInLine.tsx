@@ -13,11 +13,16 @@ const AssistantHero: React.FC = () => {
   const [hasStarted, setHasStarted] = useState(false)
   const [history, setHistory] = useState<ChatMsg[]>([])
   
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Referência para o container de scroll interno
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
+  // CORREÇÃO: Scroll interno sem mover a página
   useEffect(() => {
-    if (hasStarted) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
     }
   }, [history, loading])
 
@@ -30,12 +35,6 @@ const AssistantHero: React.FC = () => {
     }
     return id
   }
-
-  const suggestions = [
-    { text: '🏢 Apê 3 quartos no Centro', value: 'Apartamento 3 quartos no centro' },
-    { text: '🏡 Casa com piscina até 800k', value: 'Casa com piscina até 800 mil reais' },
-    { text: '🔑 Aluguel perto do metrô', value: 'Aluguel de imóvel próximo ao metrô' }
-  ]
 
   const send = async (overrideInput?: string) => {
     const textToSend = overrideInput || input
@@ -64,11 +63,11 @@ const AssistantHero: React.FC = () => {
       const data = await res.json()
       const assistant: ChatMsg = {
         role: 'assistant',
-        content: data.response || 'Desculpe, não consegui processar sua busca.'
+        content: data.response || 'Desculpe, não entendi.'
       }
       setHistory((h) => [...h, assistant])
     } catch (error) {
-      setHistory((h) => [...h, { role: 'assistant', content: 'Erro de conexão com o servidor.' }])
+      setHistory((h) => [...h, { role: 'assistant', content: 'Erro de conexão.' }])
     } finally {
       setLoading(false)
     }
@@ -77,13 +76,17 @@ const AssistantHero: React.FC = () => {
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
       
-      {/* Área do Chat (Aparece apenas quando a conversa inicia) */}
+      {/* Área do Chat com Scroll INTERNO Fixo */}
       {hasStarted && (
-        <div className="w-full bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-gray-100 shadow-xl mb-6 max-h-[400px] overflow-y-auto custom-scrollbar animate-in slide-in-from-top-4 duration-500">
-          <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100 text-[#0C2D5A]">
+        <div 
+          ref={scrollContainerRef}
+          className="w-full bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-gray-100 shadow-xl mb-6 h-[400px] overflow-y-auto custom-scrollbar animate-in slide-in-from-top-4 duration-500 scroll-smooth"
+        >
+          <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100 text-[#0C2D5A] sticky top-0 bg-white/10 backdrop-blur-sm z-10">
              <Bot className="w-5 h-5" />
              <span className="font-bold text-sm tracking-wide uppercase">Assistente MMI</span>
           </div>
+          
           <div className="space-y-4">
             {history.map((msg, idx) => (
               <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -106,12 +109,11 @@ const AssistantHero: React.FC = () => {
                 </div>
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
         </div>
       )}
 
-      {/* Input de Busca Inteligente */}
+      {/* Input de Busca (Sempre visível abaixo do chat) */}
       <div className="relative w-full group">
         <div className="relative flex items-center bg-white rounded-2xl shadow-2xl border border-gray-200 p-2 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
           <div className="hidden sm:flex pl-4 text-gray-400 items-center gap-2 border-r border-gray-100 mr-4 pr-4">
@@ -136,22 +138,6 @@ const AssistantHero: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* Sugestões Rápidas (Chips) */}
-      {!hasStarted && (
-        <div className="mt-6 flex flex-wrap justify-center gap-3 animate-in fade-in duration-1000">
-          {suggestions.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => send(s.value)}
-              className="px-5 py-2.5 rounded-full bg-white/50 backdrop-blur-sm border border-gray-200 text-gray-600 text-sm hover:bg-[#0C2D5A] hover:text-white hover:border-[#0C2D5A] transition-all active:scale-95 flex items-center gap-2 shadow-sm"
-            >
-              <Sparkles className="w-3 h-3 text-amber-500" />
-              {s.text}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

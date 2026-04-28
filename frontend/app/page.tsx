@@ -39,11 +39,6 @@ export default function Home() {
         className="pt-16 pb-16 md:pt-20 md:pb-20 lg:pt-24 lg:pb-24"
       />
       <FeaturedProducts />
-      <section className="relative z-10 px-4 -mt-20 pb-20">
-        
-        <AssistantHero />
-      </section>
-
       <AboutSection />
       <Location />
       <Newsletter />
