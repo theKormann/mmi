@@ -1,40 +1,30 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
+import { MessageCircle, X, Sparkles, Send, Bot } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string }
 
-const SparklesIcon = () => (
-  <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-  </svg>
-)
-
-const SendIcon = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13"></line>
-    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-  </svg>
-)
-
 const AssistantInline: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
-  
-  // Histórico do chat
   const [history, setHistory] = useState<ChatMsg[]>([])
   
-  // REMOVI O useRef (endRef) e o useEffect de scroll aqui
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // --- LÓGICA DE IDENTIFICAÇÃO (CRUCIAL PARA O BACKEND) ---
+  // Rola o chat para baixo automaticamente
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [history, loading, isOpen])
+
   const getVisitorId = () => {
     if (typeof window === 'undefined') return ''
     let id = localStorage.getItem('mmi_visitor_id')
     if (!id) {
-      // Gera um ID simples se não existir
       id = Math.random().toString(36).substring(2) + Date.now().toString(36)
       localStorage.setItem('mmi_visitor_id', id)
     }
@@ -50,7 +40,7 @@ const AssistantInline: React.FC = () => {
 
   const handleSuggestion = (text: string) => {
     const cleanText = text.substring(2).trim() 
-    setInput(cleanText)
+    send(cleanText)
   }
 
   const send = async (overrideInput?: string) => {
@@ -60,7 +50,6 @@ const AssistantInline: React.FC = () => {
     setHasStarted(true)
     const userMsg: ChatMsg = { role: 'user', content: textToSend.trim() }
     
-    // Atualiza a UI imediatamente (Optimistic UI)
     const newHistory = [...history, userMsg]
     setHistory(newHistory)
     setInput('')
@@ -69,14 +58,13 @@ const AssistantInline: React.FC = () => {
     try {
       const visitorId = getVisitorId()
 
-      // --- CONEXÃO COM O BACKEND SPRING BOOT ---
       const res = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            message: userMsg.content,  // Mensagem atual
-            visitorId: visitorId,      // ID para rastrear o lead
-            history: newHistory.slice(-6) // Envia contexto (últimas 6 msgs)
+            message: userMsg.content,
+            visitorId: visitorId,
+            history: newHistory.slice(-6)
         }),
       })
 
@@ -93,7 +81,6 @@ const AssistantInline: React.FC = () => {
       
       setHistory((h) => [...h, assistant])
 
-      // Verifica se o backend sinalizou a criação de um lead (opcional)
       if (data.leadCreated) {
         console.log("Lead capturado com sucesso!")
       }
@@ -114,86 +101,126 @@ const AssistantInline: React.FC = () => {
   }
 
   return (
-    <div className={`w-full max-w-2xl mx-auto transition-all duration-500 ease-in-out ${hasStarted ? 'bg-white/90 shadow-2xl rounded-3xl p-6 border border-gray-100' : ''}`}>
+    <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end font-sans">
       
-      {/* Área do Chat (só aparece após início) */}
-      {hasStarted && (
-        <div className="mb-6 space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-          {history.map((msg, idx) => (
-            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div 
-                className={`max-w-[85%] px-5 py-3 rounded-2xl text-sm leading-relaxed ${
-                  msg.role === 'user' 
-                    ? 'bg-[#0C2D5A] text-white rounded-br-none' 
-                    : 'bg-gray-100 text-gray-800 rounded-bl-none border border-gray-200'
-                }`}
-              >
-                {msg.content}
+      {/* Botão Flutuante (FAB) */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`p-4 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 z-50 ${
+          isOpen 
+            ? 'bg-white text-gray-800 rotate-90 scale-90 shadow-none border border-gray-200' 
+            : 'bg-gradient-to-r from-[#0C2D5A] to-blue-600 text-white hover:shadow-blue-500/50 rotate-0'
+        }`}
+      >
+        {isOpen ? <X className="w-7 h-7" /> : <MessageCircle className="w-8 h-8" />}
+      </button>
+
+      {/* Janela do Chat */}
+      <div
+        className={`absolute bottom-20 right-0 transition-all duration-500 origin-bottom-right transform ${
+          isOpen ? 'scale-100 opacity-100 translate-y-0' : 'scale-90 opacity-0 translate-y-10 pointer-events-none'
+        } w-[340px] sm:w-[400px] h-[550px] max-h-[80vh] flex flex-col bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden`}
+      >
+        {/* Cabeçalho */}
+        <div className="bg-gradient-to-r from-[#0C2D5A] to-blue-600 p-4 flex items-center justify-between shadow-sm relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="bg-white p-2 rounded-full shadow-md">
+              <Bot className="w-5 h-5 text-[#0C2D5A]" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-base leading-tight">Assistente MMI</h3>
+              <p className="text-blue-100 text-xs flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                Online agora
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Área de Mensagens */}
+        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-gray-50/50">
+          {!hasStarted ? (
+            <div className="h-full flex flex-col items-center justify-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-2 shadow-inner">
+                <Sparkles className="w-8 h-8 text-blue-600" />
+              </div>
+              <div className="text-center space-y-1">
+                <h4 className="text-lg font-bold text-gray-800">Como posso ajudar?</h4>
+                <p className="text-sm text-gray-500 max-w-[250px] mx-auto">
+                  Selecione uma opção ou digite o que você procura:
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 w-full">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => handleSuggestion(s)}
+                    className="px-4 py-3 rounded-xl bg-white border border-gray-200 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 text-gray-600 text-sm transition-all shadow-sm flex items-center justify-between group"
+                  >
+                    <span className="font-medium text-left">{s}</span>
+                    <span className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1">→</span>
+                  </button>
+                ))}
               </div>
             </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-50 px-4 py-3 rounded-2xl rounded-bl-none border border-gray-100 flex items-center gap-2">
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
-              </div>
+          ) : (
+            <div className="space-y-4">
+              {history.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                  <div 
+                    className={`max-w-[85%] px-4 py-3 text-sm leading-relaxed shadow-sm ${
+                      msg.role === 'user' 
+                        ? 'bg-gradient-to-br from-[#0C2D5A] to-blue-600 text-white rounded-2xl rounded-br-sm' 
+                        : 'bg-white text-gray-800 rounded-2xl rounded-bl-sm border border-gray-100'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm border border-gray-100 shadow-sm flex items-center gap-1.5">
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
           )}
-          {/* Removi a div de referência (endRef) */}
         </div>
-      )}
 
-      {/* Input Principal */}
-      <div className="relative group z-20">
-        <div className={`absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-1000 ${hasStarted ? 'hidden' : ''}`}></div>
-        <div className="relative flex items-center bg-white rounded-full shadow-lg border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-          
-          <div className="pl-5 text-gray-400">
-             <SparklesIcon />
+        {/* Input */}
+        <div className="p-3 bg-white border-t border-gray-100">
+          <div className="relative flex items-center bg-gray-50 rounded-full border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all shadow-inner">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="Digite sua mensagem..."
+              className="w-full bg-transparent border-none pl-5 pr-12 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+              autoComplete="off"
+            />
+            <button
+              onClick={() => send()}
+              disabled={!input.trim() || loading}
+              className="absolute right-1.5 p-2 rounded-full bg-[#0C2D5A] text-white hover:bg-blue-600 disabled:opacity-40 disabled:hover:bg-[#0C2D5A] transition-colors"
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 translate-x-px -translate-y-px" />
+              )}
+            </button>
           </div>
-
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={hasStarted ? "Responda à IA..." : "Descreva seu imóvel dos sonhos..."}
-            className="w-full bg-transparent border-none px-4 py-4 text-base text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-0"
-            autoComplete="off"
-          />
-          
-          <button
-            onClick={() => send()}
-            disabled={!input.trim() || loading}
-            className="mr-2 p-2.5 rounded-full bg-[#0C2D5A] text-white hover:bg-[#1F4F91] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-                <SendIcon />
-            )}
-          </button>
+          <div className="text-center mt-2">
+            <p className="text-[10px] text-gray-400">Powered by MMI AI</p>
+          </div>
         </div>
       </div>
-
-      {/* Sugestões (Chips) */}
-      {!hasStarted && (
-        <div className="mt-6 text-center animate-fade-in-up">
-          <p className="text-sm text-gray-500 mb-3 font-medium">Ou tente um destes:</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {suggestions.map((s) => (
-              <button
-                key={s}
-                onClick={() => handleSuggestion(s)}
-                className="px-4 py-2 rounded-xl bg-white/60 backdrop-blur-sm border border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 text-gray-600 text-sm transition-all shadow-sm"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
