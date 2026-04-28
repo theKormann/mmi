@@ -1,39 +1,55 @@
 'use client';
 import FeaturedProducts from "@/components/featured-products"
+import { Newsletter } from "@/components/newsletter"
 import Footer from "@/components/footer"
+import { SetupTooltip } from "@/components/setup-tooltip"
 import ArcGalleryHero from "@/components/arc-gallery-hero"
 import Location from "@/components/location"
-import AssistantHero from "@/components/assistantInLine"
+import { HeroSearchForm } from "@/components/hero-search-form";
+import AboutSection from "../components/aboutSection";
+import AssistantHero from "@/components/assistantInLine";
+
 
 export default function Home() {
+  const isShopifyConfigured = !!process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN
+
   return (
-    <main className="min-h-screen bg-[#F8FAFC]">
-      {/* Galeria Visual de Fundo */}
+    <main className="min-h-screen">
       <ArcGalleryHero
-        images={["/images/gallery1.png", "/images/gallery2.jpg", "/images/gallery3.jpg"]}
-        className="pt-20 pb-10"
+        images={[
+          "/images/gallery1.png",
+          "/images/gallery2.jpg",
+          "/images/gallery3.jpg",
+          "/images/gallery4.jpg",
+          "/images/gallery5.jpg",
+          "/images/gallery6.jpg",
+          "/images/gallery7.jpg",
+          "/images/gallery8.jpg",
+          "/images/gallery9.jpg",
+          "/images/gallery10.jpg"
+        ]}
+        startAngle={-110}
+        endAngle={110}
+        radiusLg={480}
+        radiusMd={360}
+        radiusSm={260}
+        cardSizeLg={120}
+        cardSizeMd={100}
+        cardSizeSm={80}
+        className="pt-16 pb-16 md:pt-20 md:pb-20 lg:pt-24 lg:pb-24"
       />
-
-      {/* Seção Hero de Conteúdo */}
+      <FeaturedProducts />
       <section className="relative z-10 px-4 -mt-20 pb-20">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-6xl font-black text-[#0C2D5A] mb-6 tracking-tighter leading-[1.1]">
-            Seu próximo imóvel está a <br/>
-            <span className="text-blue-600">uma conversa de distância.</span>
-          </h1>
-          <p className="text-lg text-gray-500 max-w-2xl mx-auto font-medium">
-            Diga à nossa inteligência artificial exatamente o que você precisa e 
-            nós vasculhamos nosso catálogo para encontrar a melhor oportunidade.
-          </p>
-        </div>
-
-        {/* O ASSISTENTE AGORA É O CENTRO DAS ATENÇÕES */}
+        
         <AssistantHero />
       </section>
 
-      <FeaturedProducts />
+      <AboutSection />
       <Location />
+      <Newsletter />
       <Footer />
+
+      {!isShopifyConfigured && <SetupTooltip />}
     </main>
   )
 }
