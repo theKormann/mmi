@@ -75,15 +75,6 @@ export function Navbar() {
               </Link>
             </div>
 
-            <div className="hidden lg:flex items-center max-w-sm">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4D4D4D]/80" />
-                <Input
-                  type="search"
-                  placeholder="Buscar imóveis..."
-                  className="pl-10 pr-4 py-2 w-full rounded-full bg-gray-100 border-transparent focus:bg-white focus:ring-2 focus:ring-[#0C2D5A] transition-all"
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -125,7 +116,6 @@ export function Navbar() {
             </Link>
           </div>
         </div>
-      </div>
     </nav>
   )
 }
