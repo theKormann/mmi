@@ -1,5 +1,3 @@
-// pages/index.tsx (ou onde seu HomePage estiver)
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -77,7 +75,8 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchProperties() {
       try {
-        const res = await fetch("https://mmi-fl6u.onrender.com/api/properties")
+        // CORREÇÃO: Utilizando a variável de ambiente dinâmica
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/properties`)
         if (!res.ok) {
           throw new Error("Nenhum imóvel em destaque disponível no momento.")
         }

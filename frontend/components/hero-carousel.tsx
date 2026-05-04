@@ -33,7 +33,8 @@ export const HeroCarousel = () => {
   useEffect(() => {
     const fetchProperties = async () => {
       try {
-        const response = await axios.get<Property[]>("https://mmi-fl6u.onrender.com/api/properties");
+        // CORREÇÃO: Utilizando a variável de ambiente dinâmica
+        const response = await axios.get<Property[]>(`${process.env.NEXT_PUBLIC_API_URL}/api/properties`);
         setProperties(response.data.slice(0, 5));
       } catch (err) {
         console.error("Erro ao buscar imóveis:", err);
