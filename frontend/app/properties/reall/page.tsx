@@ -65,7 +65,7 @@ function ReallContent() {
   useEffect(() => {
     async function fetchAllProperties() {
       try {
-        const res = await fetch("https://mmi-fl6u.onrender.com/api/properties");
+        const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/properties");
         if (!res.ok) throw new Error("Não foi possível carregar os imóveis.");
         const data = await res.json();
         setAllProperties(data);
